@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: fusionFM
+Version: 0.1.0
+Summary: A modern async Python web framework combining ideas from FastAPI, Flask, and Django
+Author-email: Your Name <you@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/fusionFM
+Project-URL: Repository, https://github.com/yourusername/fusionFM
+Keywords: framework,web,asgi,fastapi,flask,django
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: uvicorn>=0.20.0
+Requires-Dist: pydantic>=2.0
+Requires-Dist: python-jose>=3.3.0
+Requires-Dist: redis>=5.0.0
+Requires-Dist: click>=8.0
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+
+pip install uvicorn
+uvicorn example:app --reload
+
+pip install pydantic python-jose redis uvicorn click

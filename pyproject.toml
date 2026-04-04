@@ -1,0 +1,43 @@
+[project]
+name = "fusionFM"
+version = "0.1.0"
+description = "A modern async Python web framework combining ideas from FastAPI, Flask, and Django"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Your Name", email = "you@example.com" }
+]
+license = { text = "MIT" }
+keywords = ["framework", "web", "asgi", "fastapi", "flask", "django"]
+
+dependencies = [
+    "uvicorn>=0.20.0",
+    "pydantic>=2.0",
+    "python-jose>=3.3.0",
+    "redis>=5.0.0",
+    "click>=8.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8"
+]
+
+[project.scripts]
+fusionfm = "fusionFM.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/fusionFM"
+Repository = "https://github.com/yourusername/fusionFM"
+
+[build-system]
+requires = ["setuptools>=65.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
