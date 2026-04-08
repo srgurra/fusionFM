@@ -1,14 +1,12 @@
 from pydantic import BaseModel
+from sqlalchemy.orm import Mapped, mapped_column
 
-from fusionFM import App, Model
-from fusionFM.auth import create_token
-from fusionFM.middleware import auth_middleware, logging_middleware
-from fusionFM.cache import cache
+from fusionFM import App
+from fusionFM.orm import Model
+from fusionFM.db import init_db, get_db_session
 
-
-app = App(title="fusionFM Demo", version="0.1.0")
-app.middleware.add(logging_middleware)
-app.middleware.add(auth_middleware)
+app = App(title="fusionFM Demo", version="0.3.0")
+init_db()
 
 
 class UserInput(BaseModel):
@@ -16,65 +14,34 @@ class UserInput(BaseModel):
     age: int
 
 
-class LoginInput(BaseModel):
-    username: str
-    password: str
+class User(Model):
+    __tablename__ = "users"
 
-
-class UserRecord(Model):
-    table = "users"
-
-    def __init__(self, name, age):
-        self.name = name
-        self.age = age
-
-
-def get_settings():
-    return {"env": "dev"}
+    name: Mapped[str] = mapped_column(nullable=False)
+    age: Mapped[int] = mapped_column(nullable=False)
 
 
 @app.get("/")
 async def home(request):
-    return {"message": "Welcome to fusionFM"}
+    return {"message": "Hello from fusionFM + SQLAlchemy"}
+    
 
-
-@app.post("/login", model=LoginInput)
-async def login(request):
+@app.post("/users", model=UserInput, dependencies={"db": get_db_session})
+async def create_user(request, db):
     body = request.body
-
-    if body["username"] != "admin" or body["password"] != "admin123":
-        return {"error": "Invalid credentials"}, 401
-
-    token = create_token({"user": body["username"]})
-    return {"token": token}
+    user = User(name=body["name"], age=body["age"]).save(db)
+    return user.to_dict(), 201
 
 
-@app.post("/users", model=UserInput, dependencies={"settings": get_settings})
-async def create_user(request, settings):
-    body = request.body
-    user = UserRecord(body["name"], body["age"]).save()
-
-    return {
-        "saved": user.to_dict(),
-        "settings": settings,
-    }
+@app.get("/users", dependencies={"db": get_db_session})
+async def list_users(request, db):
+    users = [u.to_dict() for u in User.all(db)]
+    return {"users": users}
 
 
-@app.get("/users")
-@cache(ttl=30)
-async def list_users(request):
-    return {"users": UserRecord.all()}
-
-
-@app.get("/users/{id}")
-async def get_user(request):
-    user_id = int(request.params["id"])
-    user = UserRecord.get(id=user_id)
-
+@app.get("/users/{id}", dependencies={"db": get_db_session})
+async def get_user(request, db):
+    user = User.get(db, int(request.params["id"]))
     if not user:
         return {"error": "User not found"}, 404
-
-    return {
-        "user": user,
-        "auth_user": request.user,
-    }
+    return user.to_dict()

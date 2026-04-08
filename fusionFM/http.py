@@ -2,6 +2,14 @@ import json
 from urllib.parse import parse_qs
 
 
+class BackgroundTasks:
+    def __init__(self):
+        self.tasks = []
+
+    def add_task(self, func, *args, **kwargs):
+        self.tasks.append((func, args, kwargs))
+
+
 class Request:
     def __init__(self, scope, body=None, params=None):
         self.scope = scope
@@ -16,6 +24,7 @@ class Request:
         }
         self.state = {}
         self.user = None
+        self.background = BackgroundTasks()
 
     def get_header(self, name, default=None):
         return self.headers.get(name.lower(), default)

@@ -1,48 +1,43 @@
-_db = {}
+from sqlalchemy import select
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .db import Base
 
 
-class Model:
-    table = None
+class Model(Base):
+    __abstract__ = True
 
-    def __init_subclass__(cls):
-        if not getattr(cls, "table", None):
-            cls.table = cls.__name__.lower() + "s"
+    id: Mapped[int] = mapped_column(primary_key=True)
 
-    def to_dict(self):
-        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
-
-    def save(self):
-        table = _db.setdefault(self.table, [])
-
-        if not hasattr(self, "id"):
-            self.id = len(table) + 1
-
-        table.append(self.to_dict())
+    def save(self, session):
+        session.add(self)
+        session.flush()
+        session.refresh(self)
         return self
 
-    @classmethod
-    def all(cls):
-        return _db.get(cls.table, [])
+    def delete(self, session):
+        session.delete(self)
+
+    def to_dict(self):
+        data = {}
+        for column in self.__table__.columns:
+            data[column.name] = getattr(self, column.name)
+        return data
 
     @classmethod
-    def filter(cls, **kwargs):
-        results = []
-        for row in _db.get(cls.table, []):
-            if all(row.get(k) == v for k, v in kwargs.items()):
-                results.append(row)
-        return results
+    def all(cls, session):
+        return session.scalars(select(cls)).all()
 
     @classmethod
-    def get(cls, **kwargs):
-        for row in _db.get(cls.table, []):
-            if all(row.get(k) == v for k, v in kwargs.items()):
-                return row
-        return None
+    def get(cls, session, obj_id):
+        return session.get(cls, obj_id)
 
     @classmethod
-    def delete(cls, **kwargs):
-        table = _db.get(cls.table, [])
-        _db[cls.table] = [
-            row for row in table
-            if not all(row.get(k) == v for k, v in kwargs.items())
-        ]
+    def filter_by(cls, session, **kwargs):
+        stmt = select(cls).filter_by(**kwargs)
+        return session.scalars(stmt).all()
+
+    @classmethod
+    def first_by(cls, session, **kwargs):
+        stmt = select(cls).filter_by(**kwargs)
+        return session.scalars(stmt).first()

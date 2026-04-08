@@ -1,4 +1,5 @@
 import json
+import inspect
 from pydantic import ValidationError
 
 from .routing import Router
@@ -116,6 +117,13 @@ class App:
 
         response = self._normalize_response(result)
         await self._send(send, response)
+        await self._run_background_tasks(request)
+
+    async def _run_background_tasks(self, request):
+        for func, args, kwargs in request.background.tasks:
+            result = func(*args, **kwargs)
+            if inspect.isawaitable(result):
+                await result
 
     def _normalize_response(self, result):
         if isinstance(result, Response):

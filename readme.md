@@ -138,6 +138,33 @@ async def get_users(request):
     return {"data": "cached response"}
 ```
 
+## 🚦 Rate Limiting
+
+fusionFM includes Redis-backed rate limiting.
+
+```python
+from fusionFM import rate_limit
+
+@app.get("/data")
+@rate_limit(limit=10, per=60)
+async def data(request):
+    return {"message": "ok"}
+```
+
+## 🧵 Background Tasks
+
+fusionFM supports simple background tasks that run after the response is sent.
+
+```python
+async def send_email(name):
+    print(f"Sending email to {name}")
+
+@app.post("/users")
+async def create_user(request):
+    request.background.add_task(send_email, "Sri")
+    return {"status": "scheduled"}
+```
+
 ## 🧩 Dependency Injection
 ```python
 def get_settings():
@@ -232,4 +259,13 @@ Inspired by:
 
 🔥 If you like this project, consider giving it a ⭐ on GitHub!
 
+### Environment variables for different databases
 
+```bash
+#SQLite
+export DATABASE_URL="sqlite:///fusionfm.db"
+#PostGreSQL
+export DATABASE_URL="postgresql+psycopg://user:password@localhost:5432/fusionfm"
+#MySQL
+export DATABASE_URL="mysql+pymysql://user:password@localhost:3306/fusionfm"
+```
