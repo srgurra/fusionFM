@@ -7,8 +7,23 @@ requires-python = ">=3.9"
 authors = [
     { name = "Sri Lakshmi Gurram", email = "srilakshmigurram0508@gmail.com" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["framework", "web", "asgi", "fastapi", "flask", "django"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: AsyncIO",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 dependencies = [
     "uvicorn>=0.20.0",
@@ -30,12 +45,19 @@ dev = [
 fusionfm = "fusionFM.cli:cli"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/fusionFM"
-Repository = "https://github.com/yourusername/fusionFM"
+Documentation = "https://github.com/srgurra/fusionFM#readme"
+Repository = "https://github.com/srgurra/fusionFM"
+Issues = "https://github.com/srgurra/fusionFM/issues"
 
 [build-system]
 requires = ["setuptools>=65.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["fusionFM*"]
 
 [tool.black]
 line-length = 88

@@ -3,6 +3,7 @@ pydantic>=2.0
 python-jose>=3.3.0
 redis>=5.0.0
 click>=8.0
+sqlalchemy>=2.0
 
 [dev]
 pytest
