@@ -9,27 +9,55 @@ from .di import inject
 from .docs import get_openapi, get_swagger_ui_html
 from .http import Request, Response, JSONResponse, WebSocket, parse_http_body, validate_body_size
 from .exceptions import HTTPException, WebSocketException
+from .foundation import AppSettings, AppState
+from .jobs import JobQueue
 from .plugins import load_plugin
 from .versioning import VersionedAPI
 
 
 class App:
-    def __init__(self, title="fusionframe App", version="0.1.0", max_body_size=None):
+    def __init__(
+        self,
+        title="fusionframe App",
+        version="0.1.0",
+        max_body_size=None,
+        *,
+        settings=None,
+        debug=False,
+        docs_enabled=True,
+        docs_url="/docs",
+        openapi_url="/openapi.json",
+    ):
+        self.settings = settings or AppSettings(
+            title=title,
+            version=version,
+            debug=debug,
+            docs_enabled=docs_enabled,
+            docs_url=docs_url,
+            openapi_url=openapi_url,
+            max_body_size=max_body_size or AppSettings.max_body_size,
+        )
         self.router = Router()
         self.middleware = MiddlewareStack()
         self.routes_meta = []
-        self.title = title
-        self.version = version
-        self.state = {}
+        self.title = self.settings.title
+        self.version = self.settings.version
+        self.debug = self.settings.debug
+        self.state = AppState()
         self.exception_handlers = {}
         self.plugins = []
         self.startup_handlers = []
         self.shutdown_handlers = []
-        self.state["startup_time_ms"] = None
-        self.state["started_at"] = None
-        self.max_body_size = max_body_size
+        self.jobs = JobQueue()
+        self.state.startup_time_ms = None
+        self.state.started_at = None
+        self.state.is_started = False
+        self.max_body_size = self.settings.max_body_size
+        self.docs_url = self.settings.docs_url
+        self.openapi_url = self.settings.openapi_url
 
-        self._register_builtin_docs_routes()
+        if self.settings.docs_enabled:
+            self._register_builtin_docs_routes()
 
     def _register_builtin_docs_routes(self):
         async def openapi_handler(request):
@@ -39,31 +67,31 @@ class App:
 
         async def docs_handler(request):
             return Response(
-                get_swagger_ui_html("/openapi.json", f"{self.title} Docs"),
+                get_swagger_ui_html(self.openapi_url, f"{self.title} Docs"),
                 content_type="text/html; charset=utf-8",
             )
 
-        self.router.add_route("GET", "/openapi.json", openapi_handler, None)
-        self.router.add_route("GET", "/docs", docs_handler, None)
+        self.router.add_route("GET", self.openapi_url, openapi_handler, None)
+        self.router.add_route("GET", self.docs_url, docs_handler, None)
 
     def use(self, middleware):
         self.middleware.add(middleware)
         return middleware
 
-    def get(self, path, model=None, dependencies=None):
-        return self._add_route("GET", path, model=model, dependencies=dependencies)
+    def get(self, path, model=None, dependencies=None, name=None, response_model=None):
+        return self._add_route("GET", path, model=model, dependencies=dependencies, name=name, response_model=response_model)
 
-    def post(self, path, model=None, dependencies=None):
-        return self._add_route("POST", path, model=model, dependencies=dependencies)
+    def post(self, path, model=None, dependencies=None, name=None, response_model=None, request_media_type="application/json"):
+        return self._add_route("POST", path, model=model, dependencies=dependencies, name=name, response_model=response_model, request_media_type=request_media_type)
 
-    def put(self, path, model=None, dependencies=None):
-        return self._add_route("PUT", path, model=model, dependencies=dependencies)
+    def put(self, path, model=None, dependencies=None, name=None, response_model=None, request_media_type="application/json"):
+        return self._add_route("PUT", path, model=model, dependencies=dependencies, name=name, response_model=response_model, request_media_type=request_media_type)
 
-    def delete(self, path, model=None, dependencies=None):
-        return self._add_route("DELETE", path, model=model, dependencies=dependencies)
+    def delete(self, path, model=None, dependencies=None, name=None, response_model=None):
+        return self._add_route("DELETE", path, model=model, dependencies=dependencies, name=name, response_model=response_model)
 
-    def websocket(self, path, dependencies=None):
-        return self._add_websocket_route(path, dependencies=dependencies)
+    def websocket(self, path, dependencies=None, name=None):
+        return self._add_websocket_route(path, dependencies=dependencies, name=name)
 
     def exception_handler(self, exc_class):
         def decorator(func):
@@ -89,28 +117,44 @@ class App:
     def api(self, version, prefix=""):
         return VersionedAPI(self, version=version, prefix=prefix)
 
-    def _add_route(self, method, path, model=None, dependencies=None):
+    def _add_route(self, method, path, model=None, dependencies=None, name=None, response_model=None, request_media_type="application/json"):
         def decorator(func):
             wrapped = inject(func, dependencies) if dependencies else func
+            response_annotation = response_model or inspect.signature(func).return_annotation
+            if response_annotation is inspect.Signature.empty:
+                response_annotation = None
 
-            self.router.add_route(method, path, wrapped, model)
+            self.router.add_route(method, path, wrapped, model, name=name or func.__name__)
             self.routes_meta.append(
                 {
                     "method": method,
                     "path": path,
-                    "model": model.__name__ if model else None,
-                    "handler": func.__name__,
+                    "model": model,
+                    "request_media_type": request_media_type,
+                    "handler": name or func.__name__,
+                    "deprecated": getattr(func, "__fusionframe_deprecated__", False),
+                    "response_model": response_annotation,
+                    "security": getattr(func, "__fusionframe_security__", []),
+                    "roles": getattr(func, "__fusionframe_roles__", []),
+                    "permissions": getattr(func, "__fusionframe_permissions__", []),
+                    "policy": getattr(func, "__fusionframe_policy__", None),
                 }
             )
             return wrapped
 
         return decorator
 
-    def _add_websocket_route(self, path, dependencies=None):
+    def _add_websocket_route(self, path, dependencies=None, name=None):
         def decorator(func):
             wrapped = inject(func, dependencies) if dependencies else func
 
-            self.router.add_route(None, path, wrapped, protocol="websocket")
+            self.router.add_route(
+                None,
+                path,
+                wrapped,
+                protocol="websocket",
+                name=name or func.__name__,
+            )
             return wrapped
 
         return decorator
@@ -185,6 +229,8 @@ class App:
             form=form_data,
             files=files,
         )
+        request.app = self
+        request.route = route
 
         async def execute(req):
             return await route["handler"](req)
@@ -199,6 +245,11 @@ class App:
         extra_headers = request.state.get("_response_headers", {})
         for key, value in extra_headers.items():
             response.headers.setdefault(key, value)
+        if route.get("deprecated"):
+            response.headers.setdefault("Deprecation", "true")
+            reason = getattr(route["handler"], "__fusionframe_deprecation_reason__", "")
+            if reason:
+                response.headers.setdefault("X-Deprecation-Reason", reason)
         session_cookie = request.state.get("_session_cookie")
         if session_cookie:
             response.headers["Set-Cookie"] = session_cookie
@@ -243,12 +294,16 @@ class App:
             message_type = message["type"]
 
             if message_type == "lifespan.startup":
+                if self.state.is_started:
+                    await send({"type": "lifespan.startup.complete"})
+                    continue
                 started = time.perf_counter()
                 try:
                     for plugin in self.plugins:
                         await self._call_plugin_hook(plugin.startup, self)
                     for handler in self.startup_handlers:
                         await self._call_lifecycle_handler(handler)
+                    await self.jobs.start()
                 except Exception as exc:
                     await send(
                         {
@@ -262,15 +317,20 @@ class App:
                     (time.perf_counter() - started) * 1000, 3
                 )
                 self.state["started_at"] = time.time()
+                self.state.is_started = True
                 await send({"type": "lifespan.startup.complete"})
                 continue
 
             if message_type == "lifespan.shutdown":
+                if not self.state.is_started:
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
                 try:
                     for handler in reversed(self.shutdown_handlers):
                         await self._call_lifecycle_handler(handler)
                     for plugin in reversed(self.plugins):
                         await self._call_plugin_hook(plugin.shutdown, self)
+                    await self.jobs.stop()
                 except Exception as exc:
                     await send(
                         {
@@ -280,6 +340,7 @@ class App:
                     )
                     return
 
+                self.state.is_started = False
                 await send({"type": "lifespan.shutdown.complete"})
                 return
 
@@ -341,7 +402,11 @@ class App:
             result = await self._call_exception_handler(handler, exc)
             return self._normalize_response(result)
 
-        return JSONResponse({"error": "Internal Server Error"}, status_code=500)
+        payload = {"error": "Internal Server Error"}
+        if self.debug:
+            payload["detail"] = str(exc)
+            payload["exception"] = type(exc).__name__
+        return JSONResponse(payload, status_code=500)
 
     async def _handle_websocket_exception(self, websocket, exc):
         handler = self._find_exception_handler(exc)

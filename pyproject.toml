@@ -35,10 +35,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+]
 dev = [
-    "pytest",
+    "pytest>=8.0",
     "black",
-    "flake8"
+    "flake8",
+    "build",
+    "twine",
 ]
 
 [project.scripts]

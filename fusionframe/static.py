@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 from .exceptions import HTTPException
@@ -17,7 +18,7 @@ CONTENT_TYPES = {
 }
 
 
-def mount_static(app, directory, url_path="/static"):
+def mount_static(app, directory, url_path="/static", *, cache_seconds=3600):
     root = Path(directory).resolve()
     normalized_prefix = url_path.rstrip("/")
 
@@ -32,9 +33,24 @@ def mount_static(app, directory, url_path="/static"):
         if not file_path.exists() or not file_path.is_file():
             raise HTTPException(404, "Static file not found")
 
-        content_type = CONTENT_TYPES.get(file_path.suffix.lower(), "application/octet-stream")
+        content = file_path.read_bytes()
+        etag = hashlib.sha256(content).hexdigest()
+        if request.get_header("if-none-match") == etag:
+            return Response(
+                b"",
+                status_code=304,
+                headers={"ETag": etag, "Cache-Control": f"public, max-age={cache_seconds}"},
+                content_type=CONTENT_TYPES.get(file_path.suffix.lower(), "application/octet-stream"),
+            )
+
+        content_type = CONTENT_TYPES.get(
+            file_path.suffix.lower(), "application/octet-stream"
+        )
         return Response(
-            file_path.read_bytes(),
+            content,
             content_type=content_type,
-            headers={"Cache-Control": "public, max-age=3600"},
+            headers={
+                "Cache-Control": f"public, max-age={cache_seconds}",
+                "ETag": etag,
+            },
         )

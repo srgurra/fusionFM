@@ -1,6 +1,20 @@
 # fusionframe
 
-`fusionframe` is a lightweight async Python web framework with routing, validation, ORM support, websockets, plugins, and a growing set of batteries-included helpers.
+`fusionframe` is a lightweight async Python application framework with APIs, sessions, plugins, websockets, admin, migrations, templates, and testing tools built in.
+
+## Docs
+
+- [Getting Started](/Users/srilakshmi/Documents/blogs/fusionFM/docs/getting-started.md)
+- [Public API](/Users/srilakshmi/Documents/blogs/fusionFM/docs/public-api.md)
+- [Compatibility](/Users/srilakshmi/Documents/blogs/fusionFM/docs/compatibility.md)
+- [Auth And Accounts](/Users/srilakshmi/Documents/blogs/fusionFM/docs/auth-accounts.md)
+- [Operations](/Users/srilakshmi/Documents/blogs/fusionFM/docs/operations.md)
+- [Deployment](/Users/srilakshmi/Documents/blogs/fusionFM/docs/deployment.md)
+- [Testing](/Users/srilakshmi/Documents/blogs/fusionFM/docs/testing.md)
+- [Releasing](/Users/srilakshmi/Documents/blogs/fusionFM/docs/releasing.md)
+- [Full App Workflow](/Users/srilakshmi/Documents/blogs/fusionFM/docs/full-app-workflow.md)
+- [Plugin Ecosystem](/Users/srilakshmi/Documents/blogs/fusionFM/docs/plugins.md)
+- [fusionframe vs FastAPI](/Users/srilakshmi/Documents/blogs/fusionFM/docs/comparison-fastapi.md)
 
 ## Feature Matrix
 
@@ -15,8 +29,8 @@
 | Dependency Injection | Yes | Dependency wrapper with cleanup support |
 | ORM | Yes | SQLAlchemy model base helpers |
 | Migrations | Yes | Built-in additive SQL migration generator and runner |
-| Authentication | Yes | JWT helpers + auth middleware |
-| Authorization | Yes | `require_auth`, `require_role`, `require_permission` |
+| Authentication | Yes | JWT helpers, account helpers, password reset, auth middleware |
+| Authorization | Yes | `require_auth`, `require_role`, `require_permission`, resource permissions |
 | Admin Panel | Yes | Lightweight HTML admin panel for registered models |
 | Middleware Support | Yes | Application middleware stack |
 | Session Management | Yes | Signed cookie session middleware |
@@ -33,18 +47,18 @@
 | Testing Support | Yes | Built-in async-free `TestClient` |
 | CLI Tools | Yes | Run, migrations, scaffold |
 | Project Structure | Yes | CLI scaffold command creates app/templates/static/tests |
-| Scalability | Basic | ASGI/async core, Redis cache/rate limit, stateless-friendly helpers |
+| Scalability | Basic | ASGI/async core, Redis cache/rate limit, stateless-friendly helpers, worker-oriented job broker foundation |
 | Concurrency Model | Yes | Async ASGI application model |
 | Integration with Frontend | Yes | Templates, static mounts, SPA mount helper |
 | GraphQL Support | Basic | Lightweight query endpoint/router |
 | Microservices Friendly | Basic | Simple JSON service client + async ASGI core |
 | Startup Time | Good | Lightweight imports, lifespan hooks, tracked startup timing in `app.state` |
-| Security Defaults | Basic | Signed sessions, JWT issuer/audience validation, body size limit, security headers middleware |
+| Security Defaults | Good | Signed sessions, JWT issuer/audience validation, body size limit, CSRF, security headers middleware |
 
 ## Install
 
 ```bash
-pip install -e .
+pip install fusionframe
 ```
 
 ## Quick Start
@@ -70,11 +84,26 @@ async def create_user(request):
     return {"user": request.body}, 201
 ```
 
-Run:
+For local development:
 
 ```bash
+pip install -e .[dev]
 fusionframe run example:app
 ```
+
+## Why fusionframe
+
+`fusionframe` is aiming to be stronger than API-first frameworks for app-style backends by giving you:
+
+- sessions and auth
+- admin
+- migrations
+- templates and static files
+- GraphQL and REST in one app
+- jobs and lifecycle hooks
+- plugin-based extensibility
+
+See the full-stack reference example at [examples/saas_app.py](/Users/srilakshmi/Documents/blogs/fusionFM/examples/saas_app.py).
 
 ## Core APIs
 
@@ -121,6 +150,15 @@ from fusionframe import require_role
 @require_role("admin")
 async def admin(request):
     return {"ok": True}
+```
+
+### Accounts
+
+```python
+from fusionframe import AccountManager, InMemoryAuthBackend
+
+backend = InMemoryAuthBackend()
+accounts = AccountManager(backend)
 ```
 
 ### Templates and Static Files
@@ -223,6 +261,7 @@ fusionframe migrations-init
 fusionframe makemigration example:app -m "create users"
 fusionframe migrate
 fusionframe scaffold myproject
+fusionframe benchmark --iterations 5000
 ```
 
 ## Notes

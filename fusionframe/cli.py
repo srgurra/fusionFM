@@ -1,5 +1,6 @@
 import os
 import sys
+import subprocess
 from pathlib import Path
 
 import click
@@ -86,14 +87,19 @@ def scaffold(name):
     root = Path(name)
     files = {
         root / "app.py": (
-            "from fusionframe import App\n\n"
-            "app = App(title=\"fusionframe Project\")\n\n"
+            "from fusionframe import App, AppSettings, auth_middleware, security_headers_middleware, session_middleware\n\n"
+            "settings = AppSettings(title=\"fusionframe Project\")\n"
+            "app = App(settings=settings)\n"
+            "app.use(session_middleware(secure=False))\n"
+            "app.use(security_headers_middleware)\n"
+            "app.use(auth_middleware)\n\n"
             "@app.get(\"/\")\n"
             "async def home(request):\n"
             "    return {\"message\": \"hello\"}\n"
         ),
         root / "templates" / ".gitkeep": "",
         root / "static" / ".gitkeep": "",
+        root / "frontend" / ".gitkeep": "",
         root / "tests" / "test_app.py": (
             "from fusionframe import TestClient\n"
             "from app import app\n\n"
@@ -110,3 +116,21 @@ def scaffold(name):
             path.write_text(content, encoding="utf-8")
 
     click.echo(f"Scaffolded project at {root}")
+
+
+@cli.command("benchmark")
+@click.option("--iterations", default=2000, show_default=True, type=int)
+def benchmark(iterations):
+    script = Path(__file__).resolve().parents[1] / "scripts" / "benchmark.py"
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script)],
+            check=True,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "FUSIONFRAME_BENCH_ITERATIONS": str(iterations)},
+        )
+    except subprocess.CalledProcessError as exc:
+        raise click.ClickException(exc.stderr or str(exc))
+
+    click.echo(result.stdout.strip())

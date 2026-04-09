@@ -29,7 +29,7 @@ class Router:
 
         return re.compile(f"^{pattern}/?$")
 
-    def add_route(self, method, path, handler, model=None, protocol="http"):
+    def add_route(self, method, path, handler, model=None, protocol="http", name=None):
         method = method.upper() if method else None
         protocol = protocol.lower()
 
@@ -52,6 +52,14 @@ class Router:
                 "pattern": compiled,
                 "handler": handler,
                 "model": model,
+                "name": name or getattr(handler, "__name__", path),
+                "deprecated": getattr(handler, "__fusionframe_deprecated__", False),
+                "deprecation_reason": getattr(
+                    handler, "__fusionframe_deprecation_reason__", ""
+                ),
+                "deprecation_since": getattr(
+                    handler, "__fusionframe_deprecation_since__", None
+                ),
             }
         )
 

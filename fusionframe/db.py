@@ -50,3 +50,20 @@ def get_db_session():
         raise
     finally:
         session.close()
+
+
+@contextmanager
+def transaction(session=None):
+    owns_session = session is None
+    active_session = session or SessionLocal()
+    try:
+        yield active_session
+        if owns_session:
+            active_session.commit()
+    except Exception:
+        if owns_session:
+            active_session.rollback()
+        raise
+    finally:
+        if owns_session:
+            active_session.close()

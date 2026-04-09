@@ -1,7 +1,34 @@
 from .app import App
-from .auth import create_token, verify_token
-from .authorization import require_auth, require_permission, require_role
-from .admin import AdminPanel
+from .foundation import AppSettings, AppState, deprecated
+from .auth import (
+    AccountManager,
+    AccountRecord,
+    AuthBackend,
+    Identity,
+    InMemoryAuthBackend,
+    PasswordHasher,
+    PasswordResetManager,
+    authenticate_with,
+    create_token,
+    has_permission,
+    has_role,
+    normalize_identity,
+    verify_token,
+)
+from .authorization import (
+    AuthorizationPolicy,
+    PolicyRegistry,
+    authorize,
+    build_permission,
+    evaluate_policy,
+    has_resource_permission,
+    require_auth,
+    require_permission,
+    require_policy,
+    require_resource_permission,
+    require_role,
+)
+from .admin import AdminModelConfig, AdminPanel
 from .cache import cache, cache_get, cache_set, cache_delete
 from .middleware import auth_middleware, security_headers_middleware
 from .orm import Model
@@ -17,6 +44,14 @@ from .sessions import (
     clear_session,
     set_session_user,
     get_session_user,
+    login_user,
+    logout_user,
+    rotate_session,
+    get_csrf_token,
+    validate_csrf,
+    csrf_middleware,
+    SessionStore,
+    InMemorySessionStore,
 )
 from .templating import TemplateEngine
 from .static import mount_static
@@ -25,51 +60,19 @@ from .testing import TestClient
 from .versioning import VersionedAPI
 from .graphql import GraphQL
 from .frontend import mount_spa
+from .jobs import (
+    DispatchedJob,
+    DistributedJobQueue,
+    InMemoryJobStore,
+    JobQueue,
+    JobRecord,
+    JobStore,
+    JobWorker,
+    SQLiteJobStore,
+)
 from .services import ServiceClient
+from .stability import API_COMPAT_VERSION, DEPRECATION_POLICY, PUBLIC_API
 
-__all__ = [
-    "App",
-    "Request",
-    "WebSocket",
-    "UploadedFile",
-    "Response",
-    "JSONResponse",
-    "BackgroundTasks",
-    "HTTPException",
-    "WebSocketException",
-    "AdminPanel",
-    "Plugin",
-    "Model",
-    "create_token",
-    "verify_token",
-    "require_auth",
-    "require_role",
-    "require_permission",
-    "cache",
-    "cache_get",
-    "cache_set",
-    "cache_delete",
-    "auth_middleware",
-    "security_headers_middleware",
-    "rate_limit",
-    "session_middleware",
-    "set_session_value",
-    "get_session_value",
-    "clear_session",
-    "set_session_user",
-    "get_session_user",
-    "TemplateEngine",
-    "mount_static",
-    "mount_spa",
-    "paginate",
-    "get_pagination_params",
-    "TestClient",
-    "VersionedAPI",
-    "GraphQL",
-    "ServiceClient",
-    "Base",
-    "engine",
-    "SessionLocal",
-    "init_db",
-    "get_db_session",
-]
+__version__ = "0.1.0"
+
+__all__ = list(PUBLIC_API)

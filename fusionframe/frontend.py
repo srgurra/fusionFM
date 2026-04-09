@@ -5,7 +5,14 @@ from .http import Response
 from .static import mount_static
 
 
-def mount_spa(app, directory, mount_path="/app", assets_path="/assets"):
+def mount_spa(
+    app,
+    directory,
+    mount_path="/app",
+    assets_path="/assets",
+    *,
+    cache_assets_for=3600,
+):
     root = Path(directory).resolve()
     assets_root = root / assets_path.strip("/")
     if assets_root.exists():
@@ -13,6 +20,7 @@ def mount_spa(app, directory, mount_path="/app", assets_path="/assets"):
             app,
             assets_root,
             url_path=f"{mount_path.rstrip('/')}/{assets_path.strip('/')}",
+            cache_seconds=cache_assets_for,
         )
 
     async def spa_handler(request):
@@ -23,6 +31,7 @@ def mount_spa(app, directory, mount_path="/app", assets_path="/assets"):
         return Response(
             index_path.read_text(encoding="utf-8"),
             content_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "no-cache"},
         )
 
     @app.get(mount_path.rstrip("/"))

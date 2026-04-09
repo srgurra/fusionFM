@@ -5,14 +5,62 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
+from dataclasses import dataclass
 
-from .auth import create_token, verify_token
+from .auth import Identity, create_token, normalize_identity, verify_token
 
 
 SESSION_COOKIE = "fusionframe_session"
 SESSION_SECRET = os.getenv("SESSION_SECRET", "fusionframe-session-secret")
 SESSION_TTL = int(os.getenv("SESSION_TTL", 60 * 60 * 24 * 7))
+CSRF_SESSION_KEY = "_csrf_token"
+
+
+@dataclass
+class SessionData:
+    data: dict
+    session_id: str | None = None
+    is_new: bool = False
+    modified: bool = False
+    cleared: bool = False
+    rotated: bool = False
+
+
+class SessionStore:
+    def load(self, session_id):
+        raise NotImplementedError
+
+    def save(self, session_id, data, ttl):
+        raise NotImplementedError
+
+    def delete(self, session_id):
+        raise NotImplementedError
+
+    def create_session_id(self):
+        return secrets.token_urlsafe(32)
+
+
+class InMemorySessionStore(SessionStore):
+    def __init__(self):
+        self._sessions = {}
+
+    def load(self, session_id):
+        record = self._sessions.get(session_id)
+        if not record:
+            return None
+        expires_at, data = record
+        if expires_at < time.time():
+            self._sessions.pop(session_id, None)
+            return None
+        return dict(data)
+
+    def save(self, session_id, data, ttl):
+        self._sessions[session_id] = (time.time() + ttl, dict(data))
+
+    def delete(self, session_id):
+        self._sessions.pop(session_id, None)
 
 
 def _sign(value):
@@ -69,11 +117,26 @@ def session_middleware(
     same_site="Lax",
     path="/",
     domain=None,
+    store: SessionStore | None = None,
 ):
     async def middleware(request, call_next):
         cookie_header = request.get_header("cookie", "")
         cookies = _parse_cookies(cookie_header)
-        request.session = _decode_session(cookies.get(cookie_name))
+
+        if store:
+            session_id = cookies.get(cookie_name)
+            payload = store.load(session_id) if session_id else None
+            request.session = payload or {}
+            request.session_meta = SessionData(
+                data=request.session,
+                session_id=session_id,
+                is_new=payload is None,
+            )
+        else:
+            request.session = _decode_session(cookies.get(cookie_name))
+            request.session_meta = SessionData(data=request.session)
+
+        request.session.setdefault(CSRF_SESSION_KEY, secrets.token_urlsafe(24))
 
         response = await call_next()
         should_secure = secure
@@ -82,12 +145,7 @@ def session_middleware(
             scheme = request.scope.get("scheme")
             should_secure = forwarded_proto == "https" or scheme == "https"
 
-        cookie_parts = [
-            f"{cookie_name}={_encode_session(request.session)}",
-            f"Path={path}",
-            f"SameSite={same_site}",
-            f"Max-Age={SESSION_TTL}",
-        ]
+        cookie_parts = [f"Path={path}", f"SameSite={same_site}", f"Max-Age={SESSION_TTL}"]
         if http_only:
             cookie_parts.append("HttpOnly")
         if should_secure:
@@ -95,7 +153,29 @@ def session_middleware(
         if domain:
             cookie_parts.append(f"Domain={domain}")
 
-        request.state["_session_cookie"] = "; ".join(cookie_parts)
+        meta = request.session_meta
+        if meta.cleared:
+            request.state["_session_cookie"] = (
+                f"{cookie_name}=; Path={path}; Max-Age=0"
+            )
+            if store and meta.session_id:
+                store.delete(meta.session_id)
+            return response
+
+        if store:
+            session_id = (
+                store.create_session_id()
+                if meta.rotated or not meta.session_id
+                else meta.session_id
+            )
+            store.save(session_id, request.session, SESSION_TTL)
+            request.state["_session_cookie"] = "; ".join(
+                [f"{cookie_name}={session_id}", *cookie_parts]
+            )
+        else:
+            request.state["_session_cookie"] = "; ".join(
+                [f"{cookie_name}={_encode_session(request.session)}", *cookie_parts]
+            )
         return response
 
     return middleware
@@ -103,6 +183,8 @@ def session_middleware(
 
 def set_session_value(request, key, value):
     request.session[key] = value
+    if hasattr(request, "session_meta"):
+        request.session_meta.modified = True
 
 
 def get_session_value(request, key, default=None):
@@ -111,20 +193,79 @@ def get_session_value(request, key, default=None):
 
 def clear_session(request):
     request.session.clear()
+    if hasattr(request, "session_meta"):
+        request.session_meta.cleared = True
 
 
 def set_session_user(request, user, *, token_key="_token"):
-    request.session["user"] = user
-    request.session[token_key] = create_token(user)
+    identity = normalize_identity(user)
+    if identity is None:
+        raise TypeError("user must be a dict or Identity")
+    request.session["user"] = identity.to_claims()
+    request.session[token_key] = create_token(identity)
+    if hasattr(request, "session_meta"):
+        request.session_meta.modified = True
 
 
 def get_session_user(request, default=None):
     user = request.session.get("user")
     if user is not None:
-        return user
+        identity = normalize_identity(user)
+        return identity.to_claims() if identity else default
 
     token = request.session.get("_token")
     if token:
         return verify_token(token) or default
 
     return default
+
+
+def login_user(request, user):
+    set_session_user(request, user)
+    rotate_session(request)
+
+
+def logout_user(request):
+    clear_session(request)
+
+
+def rotate_session(request):
+    if hasattr(request, "session_meta"):
+        request.session_meta.rotated = True
+        request.session_meta.modified = True
+    request.session[CSRF_SESSION_KEY] = secrets.token_urlsafe(24)
+
+
+def get_csrf_token(request):
+    return request.session.setdefault(CSRF_SESSION_KEY, secrets.token_urlsafe(24))
+
+
+def validate_csrf(request, token=None):
+    expected = request.session.get(CSRF_SESSION_KEY)
+    provided = (
+        token
+        or request.get_header("x-csrf-token")
+        or request.form().get("_csrf_token")
+        or request.body.get("_csrf_token")
+    )
+    return bool(expected and provided and secrets.compare_digest(expected, provided))
+
+
+def csrf_middleware(
+    *,
+    exempt_methods=("GET", "HEAD", "OPTIONS"),
+    exempt_paths=None,
+):
+    exempt_methods = {method.upper() for method in exempt_methods}
+    exempt_paths = set(exempt_paths or [])
+
+    async def middleware(request, call_next):
+        get_csrf_token(request)
+        if request.method.upper() not in exempt_methods and request.path not in exempt_paths:
+            if not validate_csrf(request):
+                from .exceptions import HTTPException
+
+                raise HTTPException(403, "CSRF validation failed")
+        return await call_next()
+
+    return middleware
