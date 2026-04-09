@@ -7,6 +7,7 @@
 - [Getting Started](/Users/srilakshmi/Documents/blogs/fusionFM/docs/getting-started.md)
 - [Public API](/Users/srilakshmi/Documents/blogs/fusionFM/docs/public-api.md)
 - [Compatibility](/Users/srilakshmi/Documents/blogs/fusionFM/docs/compatibility.md)
+- [Architecture](/Users/srilakshmi/Documents/blogs/fusionFM/docs/architecture.md)
 - [Auth And Accounts](/Users/srilakshmi/Documents/blogs/fusionFM/docs/auth-accounts.md)
 - [React And TypeScript](/Users/srilakshmi/Documents/blogs/fusionFM/docs/react-typescript.md)
 - [Operations](/Users/srilakshmi/Documents/blogs/fusionFM/docs/operations.md)

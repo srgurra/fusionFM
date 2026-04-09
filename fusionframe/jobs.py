@@ -625,7 +625,7 @@ class JobQueue:
                 record.status = "cancelled"
                 record.cancelled_at = time.time()
                 record.error = "Job cancelled"
-            except TimeoutError:
+            except (asyncio.TimeoutError, TimeoutError):
                 record.error = f"Job exceeded timeout of {record.timeout} seconds"
                 if record.attempts <= record.max_retries:
                     await self._retry_job(record, func, args, kwargs)
@@ -634,7 +634,7 @@ class JobQueue:
                 record.status = "failed"
                 record.completed_at = time.time()
             except Exception as exc:
-                record.error = str(exc)
+                record.error = _format_job_error(exc)
                 if record.attempts <= record.max_retries:
                     await self._retry_job(record, func, args, kwargs)
                     self._active_tasks.pop(job_id, None)
@@ -732,10 +732,10 @@ class JobWorker:
                 else:
                     result = await result
             self.queue.broker.complete(job.id, result=result)
-        except TimeoutError:
+        except (asyncio.TimeoutError, TimeoutError):
             self.queue.broker.fail(job.id, f"Job exceeded timeout of {job.timeout} seconds")
         except Exception as exc:
-            self.queue.broker.fail(job.id, str(exc))
+            self.queue.broker.fail(job.id, _format_job_error(exc))
         return self.queue.broker.get_dispatched(job.id)
 
     async def run_until_empty(self, *, max_iterations: int = 100):
@@ -793,6 +793,13 @@ def _sqlite_row_to_dispatched_job(row):
         error=row[12],
         result=result,
     )
+
+
+def _format_job_error(exc):
+    message = str(exc).strip()
+    if message:
+        return message
+    return exc.__class__.__name__
 
 
 async def _await_cancel(task):

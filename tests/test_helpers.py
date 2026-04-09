@@ -425,6 +425,33 @@ def test_job_queue_retry_failure_and_visibility(tmp_path):
     assert failed_record.error == "permanent failure"
 
 
+def test_job_queue_uses_exception_class_name_when_error_message_is_empty():
+    class SilentError(Exception):
+        def __str__(self):
+            return ""
+
+    async def run_failed():
+        queue = JobQueue()
+        await queue.start()
+
+        async def silent_failure():
+            raise SilentError()
+
+        job_id = await queue.enqueue(silent_failure)
+        for _ in range(30):
+            record = queue.get_job(job_id)
+            if record and record.status == "failed":
+                break
+            await asyncio.sleep(0.02)
+        await queue.stop()
+        return queue.get_job(job_id)
+
+    failed_record = asyncio.run(run_failed())
+    assert failed_record is not None
+    assert failed_record.status == "failed"
+    assert failed_record.error == "SilentError"
+
+
 def test_sqlite_job_store_persists_job_state(tmp_path):
     store_path = tmp_path / "jobs.sqlite3"
 
