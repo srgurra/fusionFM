@@ -10,8 +10,8 @@ import time
 from .auth import create_token, verify_token
 
 
-SESSION_COOKIE = "fusionfm_session"
-SESSION_SECRET = os.getenv("SESSION_SECRET", "fusionfm-session-secret")
+SESSION_COOKIE = "fusionframe_session"
+SESSION_SECRET = os.getenv("SESSION_SECRET", "fusionframe-session-secret")
 SESSION_TTL = int(os.getenv("SESSION_TTL", 60 * 60 * 24 * 7))
 
 

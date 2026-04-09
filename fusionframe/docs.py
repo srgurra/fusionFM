@@ -37,7 +37,7 @@ def get_openapi(title, version, routes_meta):
     }
 
 
-def get_swagger_ui_html(openapi_url="/openapi.json", title="fusionFM Docs"):
+def get_swagger_ui_html(openapi_url="/openapi.json", title="fusionframe Docs"):
     return f"""
     <!DOCTYPE html>
     <html>

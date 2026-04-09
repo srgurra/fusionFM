@@ -31,7 +31,7 @@ async def auth_middleware(request, call_next):
 
 
 async def logging_middleware(request, call_next):
-    print(f"[fusionFM] {request.method} {request.path}")
+    print(f"[fusionframe] {request.method} {request.path}")
     return await call_next()
 
 

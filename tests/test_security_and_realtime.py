@@ -1,6 +1,6 @@
 import asyncio
 
-from fusionFM import (
+from fusionframe import (
     App,
     TestClient,
     auth_middleware,

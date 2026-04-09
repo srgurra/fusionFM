@@ -1,6 +1,6 @@
-# fusionFM
+# fusionframe
 
-`fusionFM` is a lightweight async Python web framework with routing, validation, ORM support, websockets, plugins, and a growing set of batteries-included helpers.
+`fusionframe` is a lightweight async Python web framework with routing, validation, ORM support, websockets, plugins, and a growing set of batteries-included helpers.
 
 ## Feature Matrix
 
@@ -51,7 +51,7 @@ pip install -e .
 
 ```python
 from pydantic import BaseModel
-from fusionFM import App
+from fusionframe import App
 
 app = App()
 
@@ -73,7 +73,7 @@ async def create_user(request):
 Run:
 
 ```bash
-fusionfm run example:app
+fusionframe run example:app
 ```
 
 ## Core APIs
@@ -91,7 +91,7 @@ async def users(request):
 ### Sessions
 
 ```python
-from fusionFM import session_middleware, set_session_value
+from fusionframe import session_middleware, set_session_value
 
 app.use(session_middleware())
 
@@ -104,7 +104,7 @@ async def login(request):
 ### Security Hardening
 
 ```python
-from fusionFM import security_headers_middleware
+from fusionframe import security_headers_middleware
 
 app = App(max_body_size=1024 * 1024)
 app.use(security_headers_middleware)
@@ -115,7 +115,7 @@ Session cookies are signed and expiring. JWT verification also checks issuer, an
 ### Authorization
 
 ```python
-from fusionFM import require_role
+from fusionframe import require_role
 
 @app.get("/admin")
 @require_role("admin")
@@ -126,14 +126,14 @@ async def admin(request):
 ### Templates and Static Files
 
 ```python
-from fusionFM import TemplateEngine, mount_static
+from fusionframe import TemplateEngine, mount_static
 
 templates = TemplateEngine("templates")
 mount_static(app, "static")
 
 @app.get("/")
 async def home(request):
-    return templates.response("home.html", {"title": "fusionFM"})
+    return templates.response("home.html", {"title": "fusionframe"})
 ```
 
 ### Forms and Uploads
@@ -152,7 +152,7 @@ async def upload(request):
 ### Pagination
 
 ```python
-from fusionFM import get_pagination_params, paginate
+from fusionframe import get_pagination_params, paginate
 
 @app.get("/items")
 async def items(request):
@@ -163,8 +163,8 @@ async def items(request):
 ### Admin Panel
 
 ```python
-from fusionFM import AdminPanel
-from fusionFM.db import get_db_session
+from fusionframe import AdminPanel
+from fusionframe.db import get_db_session
 
 admin = AdminPanel()
 admin.register(User)
@@ -174,7 +174,7 @@ admin.install(app, get_db_session)
 ### GraphQL
 
 ```python
-from fusionFM import GraphQL
+from fusionframe import GraphQL
 
 graphql = GraphQL()
 
@@ -200,7 +200,7 @@ async def health(request):
 ### Frontend Integration
 
 ```python
-from fusionFM import mount_spa
+from fusionframe import mount_spa
 
 mount_spa(app, "frontend", mount_path="/app")
 ```
@@ -208,7 +208,7 @@ mount_spa(app, "frontend", mount_path="/app")
 ### Testing
 
 ```python
-from fusionFM import TestClient
+from fusionframe import TestClient
 
 client = TestClient(app)
 response = client.get("/")
@@ -218,11 +218,11 @@ assert response.status_code == 200
 ## CLI
 
 ```bash
-fusionfm run example:app
-fusionfm migrations-init
-fusionfm makemigration example:app -m "create users"
-fusionfm migrate
-fusionfm scaffold myproject
+fusionframe run example:app
+fusionframe migrations-init
+fusionframe makemigration example:app -m "create users"
+fusionframe migrate
+fusionframe scaffold myproject
 ```
 
 ## Notes

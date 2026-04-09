@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fusionFM import (
+from fusionframe import (
     App,
     GraphQL,
     TemplateEngine,
@@ -55,7 +55,7 @@ def test_templates_static_forms_uploads_and_versioning(tmp_path):
     form_response = client.post("/contact", form={"name": "Sri"})
     assert form_response.json()["form"] == {"name": "Sri"}
 
-    boundary = "----fusionfm"
+    boundary = "----fusionframe"
     body = (
         f"--{boundary}\r\n"
         'Content-Disposition: form-data; name="file"; filename="hello.txt"\r\n'

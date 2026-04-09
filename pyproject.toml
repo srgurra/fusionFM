@@ -1,5 +1,5 @@
 [project]
-name = "fusionFM"
+name = "fusionframe"
 version = "0.1.0"
 description = "A modern async Python web framework combining ideas from FastAPI, Flask, and Django"
 readme = "README.md"
@@ -42,12 +42,12 @@ dev = [
 ]
 
 [project.scripts]
-fusionfm = "fusionFM.cli:cli"
+fusionframe = "fusionframe.cli:cli"
 
 [project.urls]
-Documentation = "https://github.com/srgurra/fusionFM#readme"
-Repository = "https://github.com/srgurra/fusionFM"
-Issues = "https://github.com/srgurra/fusionFM/issues"
+Documentation = "https://github.com/srgurra/fusionframe#readme"
+Repository = "https://github.com/srgurra/fusionframe"
+Issues = "https://github.com/srgurra/fusionframe/issues"
 
 [build-system]
 requires = ["setuptools>=65.0"]
@@ -57,7 +57,7 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["fusionFM*"]
+include = ["fusionframe*"]
 
 [tool.black]
 line-length = 88

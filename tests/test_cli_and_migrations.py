@@ -4,9 +4,9 @@ from click.testing import CliRunner
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
 
-from fusionFM.cli import cli
-from fusionFM.db import Base
-from fusionFM.orm import Model
+from fusionframe.cli import cli
+from fusionframe.db import Base
+from fusionframe.orm import Model
 
 
 def test_scaffold_command(tmp_path):
@@ -22,8 +22,8 @@ def test_scaffold_command(tmp_path):
 
 
 def test_migration_generation_and_apply(tmp_path, monkeypatch):
-    import fusionFM.db as db_module
-    import fusionFM.migrations as migrations_module
+    import fusionframe.db as db_module
+    import fusionframe.migrations as migrations_module
 
     engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", echo=False)
     session_local = sessionmaker(

@@ -4,7 +4,7 @@ from jose import jwt, JWTError
 
 SECRET = os.getenv("JWT_SECRET", "dev-secret")
 ALGORITHM = "HS256"
-ISSUER = os.getenv("JWT_ISSUER", "fusionFM")
+ISSUER = os.getenv("JWT_ISSUER", "fusionframe")
 AUDIENCE = os.getenv("JWT_AUDIENCE")
 
 

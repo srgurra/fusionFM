@@ -10,7 +10,7 @@ from .migrations import apply_migrations, generate_migration, init_migrations, l
 
 @click.group()
 def cli():
-    """fusionFM command line interface."""
+    """fusionframe command line interface."""
     pass
 
 
@@ -86,8 +86,8 @@ def scaffold(name):
     root = Path(name)
     files = {
         root / "app.py": (
-            "from fusionFM import App\n\n"
-            "app = App(title=\"fusionFM Project\")\n\n"
+            "from fusionframe import App\n\n"
+            "app = App(title=\"fusionframe Project\")\n\n"
             "@app.get(\"/\")\n"
             "async def home(request):\n"
             "    return {\"message\": \"hello\"}\n"
@@ -95,7 +95,7 @@ def scaffold(name):
         root / "templates" / ".gitkeep": "",
         root / "static" / ".gitkeep": "",
         root / "tests" / "test_app.py": (
-            "from fusionFM import TestClient\n"
+            "from fusionframe import TestClient\n"
             "from app import app\n\n"
             "def test_home():\n"
             "    client = TestClient(app)\n"

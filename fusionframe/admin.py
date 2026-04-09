@@ -2,7 +2,7 @@ from html import escape
 
 
 class AdminPanel:
-    def __init__(self, title="fusionFM Admin"):
+    def __init__(self, title="fusionframe Admin"):
         self.title = title
         self.models = []
 

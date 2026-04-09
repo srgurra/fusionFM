@@ -14,7 +14,7 @@ from .versioning import VersionedAPI
 
 
 class App:
-    def __init__(self, title="fusionFM App", version="0.1.0", max_body_size=None):
+    def __init__(self, title="fusionframe App", version="0.1.0", max_body_size=None):
         self.router = Router()
         self.middleware = MiddlewareStack()
         self.routes_meta = []

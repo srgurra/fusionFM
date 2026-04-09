@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column
 
-from fusionFM import (
+from fusionframe import (
     AdminPanel,
     App,
     GraphQL,
@@ -18,10 +18,10 @@ from fusionFM import (
     set_session_user,
     set_session_value,
 )
-from fusionFM.db import get_db_session
-from fusionFM.orm import Model
+from fusionframe.db import get_db_session
+from fusionframe.orm import Model
 
-app = App(title="fusionFM Demo", version="0.3.0")
+app = App(title="fusionframe Demo", version="0.3.0")
 app.use(session_middleware())
 app.use(security_headers_middleware)
 app.use(auth_middleware)
@@ -96,7 +96,7 @@ async def home(request):
     return templates.response(
         "home.html",
         {
-            "title": "fusionFM Demo",
+            "title": "fusionframe Demo",
             "feature_count": "routing, docs, auth, sessions, graphql, plugins",
         },
     )

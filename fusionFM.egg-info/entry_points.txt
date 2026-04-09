@@ -1,2 +1,0 @@
-[console_scripts]
-fusionfm = fusionFM.cli:cli

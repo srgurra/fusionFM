@@ -1,7 +1,7 @@
 import asyncio
 from pydantic import BaseModel
 
-from fusionFM import App, HTTPException, TestClient
+from fusionframe import App, HTTPException, TestClient
 
 
 class UserInput(BaseModel):
