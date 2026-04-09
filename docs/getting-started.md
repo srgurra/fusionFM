@@ -43,6 +43,6 @@ fusionframe run example:app
 
 ## Next
 
-- Read [public-api.md](/Users/srilakshmi/Documents/blogs/fusionFM/docs/public-api.md) for the stable surface.
-- Read [testing.md](/Users/srilakshmi/Documents/blogs/fusionFM/docs/testing.md) for test patterns.
-- Read [releasing.md](/Users/srilakshmi/Documents/blogs/fusionFM/docs/releasing.md) for build and publish steps.
+- Read [public-api.md](public-api.md) for the stable surface.
+- Read [testing.md](testing.md) for test patterns.
+- Read [releasing.md](releasing.md) for build and publish steps.

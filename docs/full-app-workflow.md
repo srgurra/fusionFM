@@ -35,7 +35,7 @@ fusionframe run myproject.app:app
 
 ## Reference example
 
-See [examples/saas_app.py](/Users/srilakshmi/Documents/blogs/fusionFM/examples/saas_app.py) for the full-stack pattern:
+See [examples/saas_app.py](../examples/saas_app.py) for the full-stack pattern:
 
 - session login
 - admin

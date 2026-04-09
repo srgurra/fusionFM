@@ -13,7 +13,7 @@
 
 ## Backend Example
 
-See [react_backend.py](/Users/srilakshmi/Documents/blogs/fusionFM/examples/react_backend.py).
+See [react_backend.py](../examples/react_backend.py).
 
 Key piece:
 
@@ -31,7 +31,7 @@ app.use(
 
 ## Frontend Example
 
-See [package.json](/Users/srilakshmi/Documents/blogs/fusionFM/examples/react_vite_frontend/package.json) and [App.tsx](/Users/srilakshmi/Documents/blogs/fusionFM/examples/react_vite_frontend/src/App.tsx).
+See [package.json](../examples/react_vite_frontend/package.json) and [App.tsx](../examples/react_vite_frontend/src/App.tsx).
 
 The example uses Vite proxying:
 

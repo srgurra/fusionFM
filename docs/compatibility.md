@@ -5,7 +5,7 @@
 ## Contract
 
 - The current API compatibility version is `1`.
-- The supported root import surface is defined in [fusionframe/stability.py](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/stability.py).
+- The supported root import surface is defined in [fusionframe/stability.py](../fusionframe/stability.py).
 - Root exports from `fusionframe` are the default public API.
 - `fusionframe.db` and `fusionframe.orm` are also considered stable integration modules.
 - Other submodules should be treated as implementation details unless they are explicitly documented as stable.

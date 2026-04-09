@@ -4,17 +4,17 @@
 
 ## Package Layout
 
-- [fusionframe/core](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/core/__init__.py)
+- [fusionframe/core](../fusionframe/core/__init__.py)
   - app lifecycle
   - request/response primitives
   - middleware, routing, plugins, testing
-- [fusionframe/security](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/security/__init__.py)
+- [fusionframe/security](../fusionframe/security/__init__.py)
   - auth, authorization, sessions, CSRF
-- [fusionframe/data](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/data/__init__.py)
+- [fusionframe/data](../fusionframe/data/__init__.py)
   - database, ORM, migrations, pagination
-- [fusionframe/integrations](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/integrations/__init__.py)
+- [fusionframe/integrations](../fusionframe/integrations/__init__.py)
   - templates, static assets, SPA mounting, GraphQL, service client
-- [fusionframe/operations](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/operations/__init__.py)
+- [fusionframe/operations](../fusionframe/operations/__init__.py)
   - jobs, cache, rate limiting
 
 ## Stability

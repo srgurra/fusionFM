@@ -29,7 +29,7 @@ jobs:
           python -m pip install -e .[dev]
 
       - name: Run tests
-        run: pytest -q --cov=fusionframe --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+        run: pytest -q --cov=fusionframe --cov-branch --cov-report=term-missing --cov-report=xml --cov-fail-under=80
 
       - name: Verify package compiles
         run: python -m compileall fusionframe tests example.py

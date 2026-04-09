@@ -57,8 +57,8 @@ Application helpers:
 
 Stability source of truth:
 
-- The canonical supported export list is defined in [fusionframe/stability.py](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/stability.py) as `PUBLIC_API`.
-- [fusionframe/__init__.py](/Users/srilakshmi/Documents/blogs/fusionFM/fusionframe/__init__.py) derives `__all__` from that list.
+- The canonical supported export list is defined in [fusionframe/stability.py](../fusionframe/stability.py) as `PUBLIC_API`.
+- [fusionframe/__init__.py](../fusionframe/__init__.py) derives `__all__` from that list.
 - Compatibility tests assert that the exported surface and documented contract stay aligned.
 
 Stability notes:

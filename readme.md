@@ -4,19 +4,19 @@
 
 ## Docs
 
-- [Getting Started](/Users/srilakshmi/Documents/blogs/fusionFM/docs/getting-started.md)
-- [Public API](/Users/srilakshmi/Documents/blogs/fusionFM/docs/public-api.md)
-- [Compatibility](/Users/srilakshmi/Documents/blogs/fusionFM/docs/compatibility.md)
-- [Architecture](/Users/srilakshmi/Documents/blogs/fusionFM/docs/architecture.md)
-- [Auth And Accounts](/Users/srilakshmi/Documents/blogs/fusionFM/docs/auth-accounts.md)
-- [React And TypeScript](/Users/srilakshmi/Documents/blogs/fusionFM/docs/react-typescript.md)
-- [Operations](/Users/srilakshmi/Documents/blogs/fusionFM/docs/operations.md)
-- [Deployment](/Users/srilakshmi/Documents/blogs/fusionFM/docs/deployment.md)
-- [Testing](/Users/srilakshmi/Documents/blogs/fusionFM/docs/testing.md)
-- [Releasing](/Users/srilakshmi/Documents/blogs/fusionFM/docs/releasing.md)
-- [Full App Workflow](/Users/srilakshmi/Documents/blogs/fusionFM/docs/full-app-workflow.md)
-- [Plugin Ecosystem](/Users/srilakshmi/Documents/blogs/fusionFM/docs/plugins.md)
-- [fusionframe vs FastAPI](/Users/srilakshmi/Documents/blogs/fusionFM/docs/comparison-fastapi.md)
+- [Getting Started](docs/getting-started.md)
+- [Public API](docs/public-api.md)
+- [Compatibility](docs/compatibility.md)
+- [Architecture](docs/architecture.md)
+- [Auth And Accounts](docs/auth-accounts.md)
+- [React And TypeScript](docs/react-typescript.md)
+- [Operations](docs/operations.md)
+- [Deployment](docs/deployment.md)
+- [Testing](docs/testing.md)
+- [Releasing](docs/releasing.md)
+- [Full App Workflow](docs/full-app-workflow.md)
+- [Plugin Ecosystem](docs/plugins.md)
+- [fusionframe vs FastAPI](docs/comparison-fastapi.md)
 
 ## Feature Matrix
 
@@ -105,7 +105,7 @@ fusionframe run example:app
 - jobs and lifecycle hooks
 - plugin-based extensibility
 
-See the full-stack reference example at [examples/saas_app.py](/Users/srilakshmi/Documents/blogs/fusionFM/examples/saas_app.py).
+See the full-stack reference example at [examples/saas_app.py](examples/saas_app.py).
 
 ## Core APIs
 
@@ -188,8 +188,8 @@ pip install fusionframe[templates]
 
 See:
 
-- [react_backend.py](/Users/srilakshmi/Documents/blogs/fusionFM/examples/react_backend.py)
-- [react_vite_frontend](/Users/srilakshmi/Documents/blogs/fusionFM/examples/react_vite_frontend)
+- [react_backend.py](examples/react_backend.py)
+- [react_vite_frontend](examples/react_vite_frontend)
 
 ### Forms and Uploads
 
