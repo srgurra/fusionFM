@@ -8,6 +8,7 @@
 - [Public API](/Users/srilakshmi/Documents/blogs/fusionFM/docs/public-api.md)
 - [Compatibility](/Users/srilakshmi/Documents/blogs/fusionFM/docs/compatibility.md)
 - [Auth And Accounts](/Users/srilakshmi/Documents/blogs/fusionFM/docs/auth-accounts.md)
+- [React And TypeScript](/Users/srilakshmi/Documents/blogs/fusionFM/docs/react-typescript.md)
 - [Operations](/Users/srilakshmi/Documents/blogs/fusionFM/docs/operations.md)
 - [Deployment](/Users/srilakshmi/Documents/blogs/fusionFM/docs/deployment.md)
 - [Testing](/Users/srilakshmi/Documents/blogs/fusionFM/docs/testing.md)
@@ -28,13 +29,13 @@
 | Auto API Docs | Yes | OpenAPI JSON + Swagger UI |
 | Dependency Injection | Yes | Dependency wrapper with cleanup support |
 | ORM | Yes | SQLAlchemy model base helpers |
-| Migrations | Yes | Built-in additive SQL migration generator and runner |
+| Migrations | Yes | Alembic-backed migration environment and CLI workflow |
 | Authentication | Yes | JWT helpers, account helpers, password reset, auth middleware |
 | Authorization | Yes | `require_auth`, `require_role`, `require_permission`, resource permissions |
 | Admin Panel | Yes | Lightweight HTML admin panel for registered models |
 | Middleware Support | Yes | Application middleware stack |
 | Session Management | Yes | Signed cookie session middleware |
-| Template Engine | Yes | File-based template rendering with `string.Template` |
+| Template Engine | Yes | Built-in lightweight templates plus optional Jinja2 integration |
 | Static Files Handling | Yes | Static mount helper |
 | WebSockets | Yes | Native ASGI websocket routes |
 | Background Tasks | Yes | Post-response background task queue |
@@ -49,7 +50,7 @@
 | Project Structure | Yes | CLI scaffold command creates app/templates/static/tests |
 | Scalability | Basic | ASGI/async core, Redis cache/rate limit, stateless-friendly helpers, worker-oriented job broker foundation |
 | Concurrency Model | Yes | Async ASGI application model |
-| Integration with Frontend | Yes | Templates, static mounts, SPA mount helper |
+| Integration with Frontend | Yes | Templates, static mounts, SPA mount helper, React/Vite backend integration path |
 | GraphQL Support | Basic | Lightweight query endpoint/router |
 | Microservices Friendly | Basic | Simple JSON service client + async ASGI core |
 | Startup Time | Good | Lightweight imports, lifespan hooks, tracked startup timing in `app.state` |
@@ -174,6 +175,21 @@ async def home(request):
     return templates.response("home.html", {"title": "fusionframe"})
 ```
 
+For more advanced server-rendered apps, use `JinjaTemplateEngine` with the optional templates extra:
+
+```bash
+pip install fusionframe[templates]
+```
+
+### React + TypeScript
+
+`fusionframe` can also act as the backend for a React/Vite frontend. Use `cors_middleware(...)` for explicit cross-origin development or Vite proxying for a cleaner local workflow.
+
+See:
+
+- [react_backend.py](/Users/srilakshmi/Documents/blogs/fusionFM/examples/react_backend.py)
+- [react_vite_frontend](/Users/srilakshmi/Documents/blogs/fusionFM/examples/react_vite_frontend)
+
 ### Forms and Uploads
 
 ```python
@@ -259,7 +275,8 @@ assert response.status_code == 200
 fusionframe run example:app
 fusionframe migrations-init
 fusionframe makemigration example:app -m "create users"
-fusionframe migrate
+fusionframe migrate example:app
+fusionframe downgrade example:app --revision -1
 fusionframe scaffold myproject
 fusionframe benchmark --iterations 5000
 ```
@@ -267,6 +284,6 @@ fusionframe benchmark --iterations 5000
 ## Notes
 
 - GraphQL support is intentionally lightweight and currently targets simple query dispatch.
-- Migrations currently support additive changes like creating tables and adding columns.
+- Migrations are Alembic-backed now, which is a stronger production path, but migration review and rollout safety are still your responsibility.
 - Scalability and microservice support are practical building blocks, not a full orchestration stack.
 - Startup remains fast because initialization is small by default, and startup duration is recorded when lifespan startup runs.

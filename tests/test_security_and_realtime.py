@@ -5,6 +5,7 @@ from fusionframe import (
     App,
     AuthorizationPolicy,
     build_permission,
+    cors_middleware,
     InMemoryAuthBackend,
     Identity,
     PasswordHasher,
@@ -434,3 +435,38 @@ def test_websocket_prefers_bearer_auth_over_session():
     )
 
     assert '"sub": "bearer-user"' in sent[1]["text"]
+
+
+def test_cors_middleware_handles_simple_and_preflight_requests():
+    app = App()
+    app.use(
+        cors_middleware(
+            allow_origins=["http://localhost:5173"],
+            allow_credentials=True,
+        )
+    )
+
+    @app.get("/data")
+    async def data(request):
+        return {"ok": True}
+
+    client = TestClient(app)
+
+    simple = client.get(
+        "/data",
+        headers={"origin": "http://localhost:5173"},
+    )
+    preflight = client.request(
+        "OPTIONS",
+        "/data",
+        headers={
+            "origin": "http://localhost:5173",
+            "access-control-request-method": "GET",
+        },
+    )
+
+    assert simple.status_code == 200
+    assert simple.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert simple.headers["access-control-allow-credentials"] == "true"
+    assert preflight.status_code == 204
+    assert preflight.headers["access-control-allow-methods"]

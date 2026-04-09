@@ -1,28 +1,114 @@
 from __future__ import annotations
 
-import hashlib
 import importlib
 import os
-import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import inspect, text
-from sqlalchemy.schema import CreateColumn, CreateTable
-
-from .db import Base, create_migration_table, engine
-
 MIGRATIONS_DIR = "migrations"
-SCHEMA_MIGRATIONS_TABLE = "schema_migrations"
-DOWNGRADE_POLICY = "fusionframe migrations are forward-only; write a manual corrective migration instead of downgrading."
+ALEMBIC_INI = "alembic.ini"
+
+ALEMBIC_ENV_TEMPLATE = """from __future__ import annotations
+
+from logging.config import fileConfig
+import os
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+
+from fusionframe.db import Base
+
+config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+app_target = config.get_main_option("fusionframe.app_target")
+if app_target:
+    module_name = app_target.split(":", 1)[0]
+    __import__(module_name)
+
+target_metadata = Base.metadata
+
+
+def get_url():
+    return os.getenv(
+        "DATABASE_URL",
+        config.get_main_option("sqlalchemy.url", "sqlite:///fusionframe.db"),
+    )
+
+
+def run_migrations_offline():
+    context.configure(
+        url=get_url(),
+        target_metadata=target_metadata,
+        literal_binds=True,
+        compare_type=True,
+        compare_server_default=True,
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online():
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = get_url()
+
+    connectable = engine_from_config(
+        configuration,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+"""
+
+ALEMBIC_SCRIPT_TEMPLATE = '''"""${message}
+
+Revision ID: ${up_revision}
+Revises: ${down_revision | comma,n}
+Create Date: ${create_date}
+"""
+from __future__ import annotations
+
+from alembic import op
+import sqlalchemy as sa
+${imports if imports else ""}
+
+
+# revision identifiers, used by Alembic.
+revision = ${repr(up_revision)}
+down_revision = ${repr(down_revision)}
+branch_labels = ${repr(branch_labels)}
+depends_on = ${repr(depends_on)}
+
+
+def upgrade():
+    ${upgrades if upgrades else "pass"}
+
+
+def downgrade():
+    ${downgrades if downgrades else "pass"}
+'''
 
 
 class MigrationError(RuntimeError):
-    pass
-
-
-class MigrationDiffError(MigrationError):
     pass
 
 
@@ -35,192 +121,129 @@ def load_app_module(target: str):
     return importlib.import_module(module_name)
 
 
-def init_migrations(path: str = MIGRATIONS_DIR) -> Path:
+def init_migrations(path: str = MIGRATIONS_DIR, *, db_url: str | None = None) -> Path:
     migrations_path = Path(path)
+    versions_path = migrations_path / "versions"
     migrations_path.mkdir(parents=True, exist_ok=True)
+    versions_path.mkdir(parents=True, exist_ok=True)
 
-    keep_file = migrations_path / ".gitkeep"
-    if not keep_file.exists():
-        keep_file.write_text("", encoding="utf-8")
+    env_path = migrations_path / "env.py"
+    if not env_path.exists():
+        env_path.write_text(ALEMBIC_ENV_TEMPLATE, encoding="utf-8")
+
+    script_template = migrations_path / "script.py.mako"
+    if not script_template.exists():
+        script_template.write_text(ALEMBIC_SCRIPT_TEMPLATE, encoding="utf-8")
+
+    readme_path = migrations_path / "README"
+    if not readme_path.exists():
+        readme_path.write_text(
+            "Alembic migration environment managed by fusionframe.\n",
+            encoding="utf-8",
+        )
+
+    ini_path = _alembic_ini_path(migrations_path)
+    if not ini_path.exists():
+        ini_path.write_text(
+            _render_alembic_ini(migrations_path, db_url=db_url),
+            encoding="utf-8",
+        )
 
     return migrations_path
 
 
-def ensure_migration_table():
-    create_migration_table()
-    with engine.begin() as connection:
-        columns = {col["name"] for col in inspect(connection).get_columns(SCHEMA_MIGRATIONS_TABLE)}
-        if "checksum" not in columns:
-            connection.execute(
-                text(
-                    f"ALTER TABLE {SCHEMA_MIGRATIONS_TABLE} ADD COLUMN checksum TEXT"
-                )
-            )
+def create_migration(message: str, *, app: str | None = None, path: str = MIGRATIONS_DIR, autogenerate: bool = True):
+    if app:
+        load_app_module(app)
+    init_migrations(path)
+    command, config_class = _get_alembic_api()
+    config = _build_alembic_config(path, config_class, app=app)
+    return command.revision(config, message=message, autogenerate=autogenerate)
 
 
-def get_applied_migrations() -> dict[str, str | None]:
-    ensure_migration_table()
-    with engine.begin() as connection:
-        rows = connection.execute(
-            text(f"SELECT version, checksum FROM {SCHEMA_MIGRATIONS_TABLE}")
-        ).fetchall()
-    return {row[0]: row[1] for row in rows}
+def apply_migrations(*, app: str | None = None, path: str = MIGRATIONS_DIR, revision: str = "head"):
+    if app:
+        load_app_module(app)
+    init_migrations(path)
+    command, config_class = _get_alembic_api()
+    config = _build_alembic_config(path, config_class, app=app)
+    command.upgrade(config, revision)
+    return revision
 
 
-def get_pending_migration_files(path: str = MIGRATIONS_DIR) -> list[Path]:
-    migrations_path = init_migrations(path)
-    applied = get_applied_migrations()
-
-    files = sorted(file for file in migrations_path.glob("*.sql"))
-    _validate_applied_checksums(files, applied)
-    return [file for file in files if file.name not in applied]
-
-
-def apply_migrations(path: str = MIGRATIONS_DIR) -> list[str]:
-    pending_files = get_pending_migration_files(path)
-    if not pending_files:
-        return []
-
-    applied = []
-    ensure_migration_table()
-
-    with engine.begin() as connection:
-        for migration_file in pending_files:
-            sql = migration_file.read_text(encoding="utf-8").strip()
-            for statement in _split_sql_statements(sql):
-                connection.execute(text(statement))
-            connection.execute(
-                text(
-                    f"INSERT INTO {SCHEMA_MIGRATIONS_TABLE} (version, checksum) VALUES (:version, :checksum)"
-                ),
-                {
-                    "version": migration_file.name,
-                    "checksum": _checksum_for_file(migration_file),
-                },
-            )
-            applied.append(migration_file.name)
-
-    return applied
+def downgrade_migrations(*, app: str | None = None, path: str = MIGRATIONS_DIR, revision: str = "-1"):
+    if app:
+        load_app_module(app)
+    init_migrations(path)
+    command, config_class = _get_alembic_api()
+    config = _build_alembic_config(path, config_class, app=app)
+    command.downgrade(config, revision)
+    return revision
 
 
-def downgrade_migrations(*args, **kwargs):
-    raise MigrationError(DOWNGRADE_POLICY)
+def _get_alembic_api():
+    try:
+        from alembic import command
+        from alembic.config import Config
+    except ImportError as exc:
+        raise MigrationError(
+            "Alembic support requires the 'alembic' package. Install it with "
+            "'pip install alembic' or add it to your project dependencies."
+        ) from exc
+    return command, Config
 
 
-def generate_migration(message: str, path: str = MIGRATIONS_DIR) -> Path | None:
-    migrations_path = init_migrations(path)
-    statements = _build_schema_diff()
-    if not statements:
-        return None
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    slug = _slugify(message or "migration")
-    filename = f"{timestamp}_{slug}.sql"
-    migration_path = migrations_path / filename
-    migration_path.write_text(";\n\n".join(statements) + ";\n", encoding="utf-8")
-    return migration_path
+def _build_alembic_config(path: str, config_class, *, app: str | None = None):
+    migrations_path = Path(path)
+    ini_path = _alembic_ini_path(migrations_path)
+    config = config_class(str(ini_path))
+    config.set_main_option("script_location", str(migrations_path))
+    if app:
+        config.set_main_option("fusionframe.app_target", app)
+    return config
 
 
-def _build_schema_diff() -> list[str]:
-    inspector = inspect(engine)
-    existing_tables = set(inspector.get_table_names())
-    statements = []
-    unsupported_changes = []
-
-    for table in Base.metadata.sorted_tables:
-        if table.name == SCHEMA_MIGRATIONS_TABLE:
-            continue
-
-        if table.name not in existing_tables:
-            statements.append(str(CreateTable(table).compile(engine)).strip())
-            continue
-
-        database_columns = {
-            column["name"]: column for column in inspector.get_columns(table.name)
-        }
-        metadata_columns = {column.name: column for column in table.columns}
-        existing_columns = set(database_columns)
-        for column in table.columns:
-            if column.name in existing_columns:
-                existing = database_columns[column.name]
-                unsupported_changes.extend(
-                    _compare_column_shape(table.name, column, existing)
-                )
-                continue
-
-            compiled_column = CreateColumn(column).compile(dialect=engine.dialect)
-            statements.append(
-                f"ALTER TABLE {table.name} ADD COLUMN {compiled_column}".strip()
-            )
-
-        missing_columns = sorted(existing_columns - set(metadata_columns))
-        if missing_columns:
-            unsupported_changes.append(
-                f"Table '{table.name}' has database columns not present in models: {', '.join(missing_columns)}"
-            )
-
-    existing_model_tables = {
-        table.name for table in Base.metadata.sorted_tables if table.name != SCHEMA_MIGRATIONS_TABLE
-    }
-    removed_tables = sorted(existing_tables - existing_model_tables - {SCHEMA_MIGRATIONS_TABLE})
-    if removed_tables:
-        unsupported_changes.append(
-            "Database has tables not present in models: "
-            + ", ".join(removed_tables)
-        )
-
-    if unsupported_changes:
-        raise MigrationDiffError(
-            "Unsafe schema drift detected. fusionframe only auto-generates additive migrations. "
-            + "Resolve these manually:\n- "
-            + "\n- ".join(unsupported_changes)
-        )
-
-    return statements
+def _alembic_ini_path(migrations_path: Path) -> Path:
+    return migrations_path.parent / ALEMBIC_INI
 
 
-def _slugify(value: str) -> str:
-    normalized = re.sub(r"[^a-zA-Z0-9]+", "_", value.strip().lower()).strip("_")
-    return normalized or "migration"
+def _render_alembic_ini(migrations_path: Path, *, db_url: str | None = None) -> str:
+    default_url = db_url or os.getenv("DATABASE_URL", "sqlite:///fusionframe.db")
+    return f"""[alembic]
+script_location = {migrations_path}
+prepend_sys_path = .
+sqlalchemy.url = {default_url}
+fusionframe.app_target =
 
+[loggers]
+keys = root,sqlalchemy,alembic
 
-def _checksum_for_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+[handlers]
+keys = console
 
+[formatters]
+keys = generic
 
-def _validate_applied_checksums(files, applied):
-    for file in files:
-        recorded = applied.get(file.name)
-        if recorded and recorded != _checksum_for_file(file):
-            raise MigrationError(
-                f"Applied migration '{file.name}' no longer matches its recorded checksum. "
-                "Create a new corrective migration instead of editing an applied one."
-            )
+[logger_root]
+level = WARN
+handlers = console
 
+[logger_sqlalchemy]
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
 
-def _split_sql_statements(sql: str) -> list[str]:
-    statements = []
-    for chunk in sql.split(";"):
-        statement = chunk.strip()
-        if statement:
-            statements.append(statement)
-    return statements
+[logger_alembic]
+level = INFO
+handlers =
+qualname = alembic
 
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
 
-def _compare_column_shape(table_name: str, metadata_column, database_column) -> list[str]:
-    issues = []
-    model_type = str(metadata_column.type.compile(dialect=engine.dialect)).lower()
-    database_type = str(database_column["type"]).lower()
-    if model_type != database_type:
-        issues.append(
-            f"Column '{table_name}.{metadata_column.name}' type changed from '{database_type}' to '{model_type}'"
-        )
-
-    database_nullable = bool(database_column.get("nullable", True))
-    if bool(metadata_column.nullable) != database_nullable:
-        issues.append(
-            f"Column '{table_name}.{metadata_column.name}' nullability changed from "
-            f"{database_nullable} to {bool(metadata_column.nullable)}"
-        )
-
-    return issues
+[formatter_generic]
+format = %(levelname)-5.5s [%(name)s] %(message)s
+"""

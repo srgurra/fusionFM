@@ -1,0 +1,47 @@
+:root {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: #1a1a16;
+  background:
+    radial-gradient(circle at top left, rgba(255, 197, 92, 0.45), transparent 30%),
+    linear-gradient(180deg, #f7f1e3, #efe5d0);
+}
+
+body {
+  margin: 0;
+}
+
+.shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 20px 64px;
+}
+
+.hero h1 {
+  font-size: clamp(2.4rem, 5vw, 4.6rem);
+  line-height: 0.95;
+  margin: 0 0 12px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+}
+
+.lede {
+  font-size: 1.1rem;
+  max-width: 44rem;
+}
+
+.panel {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid rgba(26, 26, 22, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+pre {
+  white-space: pre-wrap;
+}

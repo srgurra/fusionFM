@@ -26,6 +26,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "alembic>=1.13.0",
     "uvicorn>=0.20.0",
     "pydantic>=2.0",
     "python-jose>=3.3.0",
@@ -37,13 +38,18 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest>=8.0",
+    "pytest-cov>=5.0",
 ]
 dev = [
     "pytest>=8.0",
+    "pytest-cov>=5.0",
     "black",
     "flake8",
     "build",
     "twine",
+]
+templates = [
+    "jinja2>=3.1",
 ]
 
 [project.scripts]

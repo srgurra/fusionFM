@@ -30,7 +30,7 @@ from .authorization import (
 )
 from .admin import AdminModelConfig, AdminPanel
 from .cache import cache, cache_get, cache_set, cache_delete
-from .middleware import auth_middleware, security_headers_middleware
+from .middleware import auth_middleware, cors_middleware, security_headers_middleware
 from .orm import Model
 from .http import Request, Response, JSONResponse, BackgroundTasks, WebSocket, UploadedFile
 from .rate_limit import rate_limit
@@ -53,7 +53,7 @@ from .sessions import (
     SessionStore,
     InMemorySessionStore,
 )
-from .templating import TemplateEngine
+from .templating import JinjaTemplateEngine, TemplateEngine
 from .static import mount_static
 from .pagination import paginate, get_pagination_params
 from .testing import TestClient

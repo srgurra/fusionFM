@@ -17,7 +17,7 @@ The intended `fusionframe` workflow is:
 - `auth_middleware`
 - `security_headers_middleware`
 - SQLAlchemy models through `Model`
-- built-in migrations
+- Alembic-backed migrations
 - `AdminPanel`
 - `TemplateEngine`
 - `mount_static` / `mount_spa`
@@ -29,7 +29,7 @@ The intended `fusionframe` workflow is:
 fusionframe scaffold myproject
 fusionframe migrations-init
 fusionframe makemigration myproject.app:app -m "initial schema"
-fusionframe migrate
+fusionframe migrate myproject.app:app
 fusionframe run myproject.app:app
 ```
 

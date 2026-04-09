@@ -1,11 +1,13 @@
 from pathlib import Path
 
 import asyncio
+import pytest
 
 from fusionframe import (
     AdminPanel,
     App,
     DistributedJobQueue,
+    JinjaTemplateEngine,
     DispatchedJob,
     get_csrf_token,
     GraphQL,
@@ -114,6 +116,24 @@ def test_templates_static_forms_uploads_and_versioning(tmp_path):
 
     items_response = client.get("/api/v1/items", query={"page": 2, "per_page": 2})
     assert items_response.json()["items"] == [2, 3]
+
+
+def test_jinja_template_engine_renders_when_installed(tmp_path):
+    pytest.importorskip("jinja2")
+
+    templates_dir = tmp_path / "jinja"
+    templates_dir.mkdir()
+    (templates_dir / "dashboard.html").write_text(
+        "<h1>{{ title }}</h1>{% for item in items %}<span>{{ item }}</span>{% endfor %}",
+        encoding="utf-8",
+    )
+
+    templates = JinjaTemplateEngine(str(templates_dir), globals={"title": "Dashboard"})
+    rendered = templates.render("dashboard.html", {"items": ["a", "b"]})
+    inline = templates.render_string("Hello {{ name }}", {"name": "Sri"})
+
+    assert rendered == "<h1>Dashboard</h1><span>a</span><span>b</span>"
+    assert inline == "Hello Sri"
 
 
 def test_graphql_and_spa_mount(tmp_path):
@@ -246,6 +266,7 @@ def test_admin_panel_crud_and_jobs(tmp_path, monkeypatch):
     assert delete_response.status_code == 200
 
     Base.metadata.remove(User.__table__)
+    engine.dispose()
 
 
 def test_admin_model_customization_hooks(tmp_path, monkeypatch):
@@ -347,6 +368,7 @@ def test_admin_model_customization_hooks(tmp_path, monkeypatch):
     assert "Unit Price" in detail.text
 
     Base.metadata.remove(Product.__table__)
+    engine.dispose()
 
 
 def test_job_queue_retry_failure_and_visibility(tmp_path):

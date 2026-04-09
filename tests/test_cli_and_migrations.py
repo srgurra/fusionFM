@@ -1,12 +1,8 @@
 from pathlib import Path
 
 from click.testing import CliRunner
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
 
 from fusionframe.cli import cli
-from fusionframe.db import Base
-from fusionframe.orm import Model
 
 
 def test_scaffold_command(tmp_path):
@@ -29,136 +25,159 @@ def test_benchmark_command():
     assert "requests_per_second" in result.output
 
 
-def test_migration_generation_and_apply(tmp_path, monkeypatch):
-    import fusionframe.db as db_module
+def test_migrations_init_creates_alembic_environment(tmp_path):
     import fusionframe.migrations as migrations_module
-
-    engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}", echo=False)
-    session_local = sessionmaker(
-        bind=engine,
-        autoflush=False,
-        autocommit=False,
-        expire_on_commit=False,
-    )
-
-    monkeypatch.setattr(db_module, "engine", engine)
-    monkeypatch.setattr(db_module, "SessionLocal", session_local)
-    monkeypatch.setattr(migrations_module, "engine", engine)
-
-    class Widget(Model):
-        __tablename__ = "widgets_test"
-
-        name: Mapped[str] = mapped_column(nullable=False)
 
     migrations_dir = tmp_path / "migrations"
-    migration_path = migrations_module.generate_migration(
+    initialized = migrations_module.init_migrations(path=str(migrations_dir))
+
+    assert initialized == migrations_dir
+    assert (migrations_dir / "env.py").exists()
+    assert (migrations_dir / "script.py.mako").exists()
+    assert (migrations_dir / "versions").exists()
+    assert (tmp_path / "alembic.ini").exists()
+    assert "alembic" in (tmp_path / "alembic.ini").read_text(encoding="utf-8").lower()
+
+
+def test_alembic_wrappers_and_cli_delegate_correctly(tmp_path, monkeypatch):
+    import fusionframe.cli as cli_module
+    import fusionframe.migrations as migrations_module
+
+    calls = []
+
+    class FakeRevision:
+        path = "migrations/versions/0001_create_widgets.py"
+
+    class FakeCommand:
+        @staticmethod
+        def revision(config, message, autogenerate):
+            calls.append(
+                (
+                    "revision",
+                    config.get_main_option("script_location"),
+                    config.get_main_option("fusionframe.app_target"),
+                    message,
+                    autogenerate,
+                )
+            )
+            return FakeRevision()
+
+        @staticmethod
+        def upgrade(config, revision):
+            calls.append(
+                (
+                    "upgrade",
+                    config.get_main_option("script_location"),
+                    config.get_main_option("fusionframe.app_target"),
+                    revision,
+                )
+            )
+
+        @staticmethod
+        def downgrade(config, revision):
+            calls.append(
+                (
+                    "downgrade",
+                    config.get_main_option("script_location"),
+                    config.get_main_option("fusionframe.app_target"),
+                    revision,
+                )
+            )
+
+    class FakeConfig:
+        def __init__(self, path):
+            self.path = path
+            self.options = {}
+
+        def set_main_option(self, key, value):
+            self.options[key] = value
+
+        def get_main_option(self, key, default=None):
+            return self.options.get(key, default)
+
+    monkeypatch.setattr(
+        migrations_module,
+        "_get_alembic_api",
+        lambda: (FakeCommand, FakeConfig),
+    )
+    monkeypatch.setattr(migrations_module, "load_app_module", lambda target: calls.append(("load", target)))
+    monkeypatch.setattr(cli_module, "create_migration", migrations_module.create_migration)
+    monkeypatch.setattr(cli_module, "apply_migrations", migrations_module.apply_migrations)
+    monkeypatch.setattr(cli_module, "downgrade_migrations", migrations_module.downgrade_migrations)
+    monkeypatch.setattr(cli_module, "init_migrations", migrations_module.init_migrations)
+
+    revision = migrations_module.create_migration(
+        app="example:app",
+        message="create widgets",
+        path=str(tmp_path / "migrations"),
+    )
+    upgraded = migrations_module.apply_migrations(
+        app="example:app",
+        path=str(tmp_path / "migrations"),
+        revision="head",
+    )
+    downgraded = migrations_module.downgrade_migrations(
+        app="example:app",
+        path=str(tmp_path / "migrations"),
+        revision="-1",
+    )
+
+    assert revision.path.endswith("create_widgets.py")
+    assert upgraded == "head"
+    assert downgraded == "-1"
+    assert ("load", "example:app") in calls
+    assert (
+        "revision",
+        str(tmp_path / "migrations"),
+        "example:app",
         "create widgets",
-        path=str(migrations_dir),
+        True,
+    ) in calls
+    assert ("upgrade", str(tmp_path / "migrations"), "example:app", "head") in calls
+    assert ("downgrade", str(tmp_path / "migrations"), "example:app", "-1") in calls
+
+    runner = CliRunner()
+    init_result = runner.invoke(cli, ["migrations-init", "--path", str(tmp_path / "cli_migrations")])
+    make_result = runner.invoke(
+        cli,
+        ["makemigration", "example:app", "--message", "create widgets", "--path", str(tmp_path / "cli_migrations")],
+    )
+    migrate_result = runner.invoke(
+        cli,
+        ["migrate", "example:app", "--path", str(tmp_path / "cli_migrations"), "--revision", "head"],
+    )
+    downgrade_result = runner.invoke(
+        cli,
+        ["downgrade", "example:app", "--path", str(tmp_path / "cli_migrations"), "--revision", "-1"],
     )
 
-    assert migration_path is not None
-    assert migration_path.exists()
-    assert "widgets_test" in migration_path.read_text(encoding="utf-8")
-
-    applied = migrations_module.apply_migrations(path=str(migrations_dir))
-    assert migration_path.name in applied
-
-    migration_path.write_text("-- changed\n" + migration_path.read_text(encoding="utf-8"), encoding="utf-8")
-    try:
-        migrations_module.get_pending_migration_files(path=str(migrations_dir))
-    except RuntimeError as exc:
-        assert "no longer matches its recorded checksum" in str(exc)
-    else:
-        raise AssertionError("expected checksum drift detection")
-
-    # Cleanup metadata registration for other tests
-    Base.metadata.remove(Widget.__table__)
+    assert init_result.exit_code == 0
+    assert "Initialized migrations directory" in init_result.output
+    assert make_result.exit_code == 0
+    assert "Created Alembic revision" in make_result.output
+    assert migrate_result.exit_code == 0
+    assert "Applied Alembic upgrade to head" in migrate_result.output
+    assert downgrade_result.exit_code == 0
+    assert "Applied Alembic downgrade to -1" in downgrade_result.output
 
 
-def test_migration_diff_rejects_unsafe_column_drift(tmp_path, monkeypatch):
-    import fusionframe.db as db_module
+def test_migration_commands_require_alembic(tmp_path, monkeypatch):
     import fusionframe.migrations as migrations_module
 
-    engine = create_engine(f"sqlite:///{tmp_path / 'drift.db'}", echo=False)
-    session_local = sessionmaker(
-        bind=engine,
-        autoflush=False,
-        autocommit=False,
-        expire_on_commit=False,
+    monkeypatch.setattr(
+        migrations_module,
+        "_get_alembic_api",
+        lambda: (_ for _ in ()).throw(migrations_module.MigrationError("Alembic support requires the 'alembic' package.")),
     )
+    monkeypatch.setattr(migrations_module, "load_app_module", lambda target: None)
 
-    monkeypatch.setattr(db_module, "engine", engine)
-    monkeypatch.setattr(db_module, "SessionLocal", session_local)
-    monkeypatch.setattr(migrations_module, "engine", engine)
-
-    with engine.begin() as connection:
-        connection.execute(
-            text("CREATE TABLE accounts_drift (id INTEGER PRIMARY KEY, name INTEGER NOT NULL)")
+    try:
+        migrations_module.create_migration(
+            app="example:app",
+            message="create widgets",
+            path=str(tmp_path / "migrations"),
         )
-
-    class Account(Model):
-        __tablename__ = "accounts_drift"
-        name: Mapped[str] = mapped_column(nullable=False)
-
-    try:
-        migrations_module.generate_migration("unsafe drift", path=str(tmp_path / "migrations"))
-    except migrations_module.MigrationDiffError as exc:
-        message = str(exc)
-        assert "Unsafe schema drift detected" in message
-        assert "accounts_drift.name" in message
-        assert "type changed" in message
-    else:
-        raise AssertionError("expected unsafe drift detection")
-
-    Base.metadata.remove(Account.__table__)
-
-
-def test_migration_diff_rejects_removed_schema_objects(tmp_path, monkeypatch):
-    import fusionframe.db as db_module
-    import fusionframe.migrations as migrations_module
-
-    engine = create_engine(f"sqlite:///{tmp_path / 'removed.db'}", echo=False)
-    session_local = sessionmaker(
-        bind=engine,
-        autoflush=False,
-        autocommit=False,
-        expire_on_commit=False,
-    )
-
-    monkeypatch.setattr(db_module, "engine", engine)
-    monkeypatch.setattr(db_module, "SessionLocal", session_local)
-    monkeypatch.setattr(migrations_module, "engine", engine)
-
-    with engine.begin() as connection:
-        connection.execute(
-            text("CREATE TABLE removed_cols (id INTEGER PRIMARY KEY, name TEXT NOT NULL, legacy TEXT)")
-        )
-        connection.execute(text("CREATE TABLE orphan_table (id INTEGER PRIMARY KEY)"))
-
-    class RemovedCols(Model):
-        __tablename__ = "removed_cols"
-        name: Mapped[str] = mapped_column(nullable=False)
-
-    try:
-        migrations_module.generate_migration("removed schema", path=str(tmp_path / "migrations"))
-    except migrations_module.MigrationDiffError as exc:
-        message = str(exc)
-        assert "database columns not present in models" in message
-        assert "legacy" in message
-        assert "Database has tables not present in models" in message
-        assert "orphan_table" in message
-    else:
-        raise AssertionError("expected removed schema detection")
-
-    Base.metadata.remove(RemovedCols.__table__)
-
-
-def test_migrations_are_explicitly_forward_only():
-    import fusionframe.migrations as migrations_module
-
-    try:
-        migrations_module.downgrade_migrations()
     except migrations_module.MigrationError as exc:
-        assert "forward-only" in str(exc)
+        assert "alembic" in str(exc).lower()
     else:
-        raise AssertionError("expected forward-only downgrade policy")
+        raise AssertionError("expected missing alembic error")

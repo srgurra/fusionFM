@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import closing, contextmanager
 import inspect
 import json
 import sqlite3
@@ -136,10 +137,16 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_schema()
 
+    @contextmanager
+    def _connection(self):
+        with closing(sqlite3.connect(self.path)) as connection:
+            with connection:
+                yield connection
+
     def save(self, record: JobRecord):
         payload = asdict(record)
         payload["result"] = json.dumps(record.result)
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             connection.execute(
                 """
                 INSERT INTO job_records (
@@ -180,7 +187,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
             )
 
     def get(self, job_id: str) -> JobRecord | None:
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             row = connection.execute(
                 """
                 SELECT id, name, status, attempts, max_retries, retry_backoff, timeout,
@@ -193,7 +200,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
         return _sqlite_row_to_record(row)
 
     def list(self) -> list[JobRecord]:
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             rows = connection.execute(
                 """
                 SELECT id, name, status, attempts, max_retries, retry_backoff, timeout,
@@ -205,7 +212,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
         return [_sqlite_row_to_record(row) for row in rows]
 
     def save_schedule(self, schedule: ScheduledJob):
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             connection.execute(
                 """
                 INSERT INTO scheduled_jobs (
@@ -229,7 +236,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
             )
 
     def get_schedule(self, name: str) -> ScheduledJob | None:
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             row = connection.execute(
                 """
                 SELECT name, interval, max_retries, retry_backoff, timeout, last_run
@@ -251,7 +258,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
         )
 
     def list_schedules(self) -> list[ScheduledJob]:
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             rows = connection.execute(
                 """
                 SELECT name, interval, max_retries, retry_backoff, timeout, last_run
@@ -284,7 +291,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
             created_at=time.time(),
             updated_at=time.time(),
         )
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             connection.execute(
                 """
                 INSERT INTO distributed_jobs (
@@ -313,7 +320,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
 
     def claim_next(self, *, lease_seconds: float = 30.0) -> DispatchedJob | None:
         now = time.time()
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             row = connection.execute(
                 """
                 SELECT id, task_name, payload, status, attempts, max_retries, retry_backoff,
@@ -345,7 +352,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
 
     def complete(self, job_id: str, result=None):
         now = time.time()
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             connection.execute(
                 """
                 UPDATE distributed_jobs
@@ -368,7 +375,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
         next_status = "failed"
         if job.attempts <= job.max_retries:
             next_status = "retrying"
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             connection.execute(
                 """
                 UPDATE distributed_jobs
@@ -384,7 +391,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
 
     def retry(self, job_id: str):
         now = time.time()
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             connection.execute(
                 """
                 UPDATE distributed_jobs
@@ -397,7 +404,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
             )
 
     def get_dispatched(self, job_id: str) -> DispatchedJob | None:
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             row = connection.execute(
                 """
                 SELECT id, task_name, payload, status, attempts, max_retries, retry_backoff,
@@ -410,7 +417,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
         return _sqlite_row_to_dispatched_job(row)
 
     def list_dispatched(self) -> list[DispatchedJob]:
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             rows = connection.execute(
                 """
                 SELECT id, task_name, payload, status, attempts, max_retries, retry_backoff,
@@ -422,7 +429,7 @@ class SQLiteJobStore(JobStore, DistributedJobBroker):
         return [_sqlite_row_to_dispatched_job(row) for row in rows]
 
     def _ensure_schema(self):
-        with sqlite3.connect(self.path) as connection:
+        with self._connection() as connection:
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS job_records (

@@ -6,7 +6,12 @@ from pathlib import Path
 import click
 import uvicorn
 
-from .migrations import apply_migrations, generate_migration, init_migrations, load_app_module
+from .migrations import (
+    apply_migrations,
+    create_migration,
+    downgrade_migrations,
+    init_migrations,
+)
 
 
 @click.group()
@@ -53,32 +58,37 @@ def migrations_init(path):
 @click.option("--path", default="migrations", show_default=True)
 def makemigration(app, message, path):
     try:
-        load_app_module(app)
-        migration_path = generate_migration(message=message, path=path)
+        revision = create_migration(app=app, message=message, path=path)
     except Exception as e:
         raise click.ClickException(str(e))
 
-    if migration_path is None:
-        click.echo("No schema changes detected.")
-        return
-
-    click.echo(f"Created migration {migration_path}")
+    click.echo(f"Created Alembic revision {getattr(revision, 'path', revision)}")
 
 
 @cli.command("migrate")
+@click.argument("app")
 @click.option("--path", default="migrations", show_default=True)
-def migrate(path):
+@click.option("--revision", default="head", show_default=True)
+def migrate(app, path, revision):
     try:
-        applied = apply_migrations(path=path)
+        applied = apply_migrations(app=app, path=path, revision=revision)
     except Exception as e:
         raise click.ClickException(str(e))
 
-    if not applied:
-        click.echo("No pending migrations.")
-        return
+    click.echo(f"Applied Alembic upgrade to {applied}")
 
-    for migration in applied:
-        click.echo(f"Applied {migration}")
+
+@cli.command("downgrade")
+@click.argument("app")
+@click.option("--path", default="migrations", show_default=True)
+@click.option("--revision", default="-1", show_default=True)
+def downgrade(app, path, revision):
+    try:
+        applied = downgrade_migrations(app=app, path=path, revision=revision)
+    except Exception as e:
+        raise click.ClickException(str(e))
+
+    click.echo(f"Applied Alembic downgrade to {applied}")
 
 
 @cli.command("scaffold")

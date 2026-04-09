@@ -59,6 +59,7 @@ def test_model_query_relationships_and_pagination(tmp_path, monkeypatch):
 
     Base.metadata.remove(Book.__table__)
     Base.metadata.remove(Author.__table__)
+    engine.dispose()
 
 
 def test_model_validation_hooks_update_and_transactions(tmp_path, monkeypatch):
@@ -130,3 +131,4 @@ def test_model_validation_hooks_update_and_transactions(tmp_path, monkeypatch):
     ]
 
     Base.metadata.remove(Product.__table__)
+    engine.dispose()

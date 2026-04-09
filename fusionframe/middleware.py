@@ -42,3 +42,58 @@ async def security_headers_middleware(request, call_next):
     headers.setdefault("X-Frame-Options", "DENY")
     headers.setdefault("Referrer-Policy", "same-origin")
     return response
+
+
+def cors_middleware(
+    *,
+    allow_origins=None,
+    allow_credentials=False,
+    allow_methods=None,
+    allow_headers=None,
+    expose_headers=None,
+    max_age=600,
+):
+    allow_origins = list(allow_origins or ["*"])
+    allow_methods = [method.upper() for method in (allow_methods or ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])]
+    allow_headers = list(allow_headers or ["Authorization", "Content-Type", "X-CSRF-Token"])
+    expose_headers = list(expose_headers or [])
+
+    async def middleware(request, call_next):
+        origin = request.get_header("origin")
+        allowed_origin = _resolve_allowed_origin(origin, allow_origins)
+
+        if request.method.upper() == "OPTIONS" and request.get_header("access-control-request-method"):
+            headers = {}
+            if allowed_origin:
+                headers["Access-Control-Allow-Origin"] = allowed_origin
+                headers["Vary"] = "Origin"
+            headers["Access-Control-Allow-Methods"] = ", ".join(allow_methods)
+            headers["Access-Control-Allow-Headers"] = ", ".join(allow_headers)
+            headers["Access-Control-Max-Age"] = str(max_age)
+            if allow_credentials:
+                headers["Access-Control-Allow-Credentials"] = "true"
+            request.state.setdefault("_response_headers", {}).update(headers)
+            return "", 204
+
+        response = await call_next()
+        if allowed_origin:
+            headers = request.state.setdefault("_response_headers", {})
+            headers.setdefault("Access-Control-Allow-Origin", allowed_origin)
+            headers.setdefault("Vary", "Origin")
+            if allow_credentials:
+                headers.setdefault("Access-Control-Allow-Credentials", "true")
+            if expose_headers:
+                headers.setdefault("Access-Control-Expose-Headers", ", ".join(expose_headers))
+        return response
+
+    return middleware
+
+
+def _resolve_allowed_origin(origin, allow_origins):
+    if not origin:
+        return None
+    if "*" in allow_origins:
+        return origin
+    if origin in allow_origins:
+        return origin
+    return None

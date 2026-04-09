@@ -26,6 +26,7 @@ Supported import boundary:
 - `HTTPException`, `WebSocketException`
 - `Plugin`
 - `TemplateEngine`
+- `JinjaTemplateEngine`
 - `GraphQL`
 - `VersionedAPI`
 - `TestClient`

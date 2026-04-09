@@ -177,9 +177,40 @@ class App:
     async def _handle_http(self, scope, receive, send):
         method = scope["method"]
         path = scope["path"]
+        headers = {
+            k.decode("latin-1"): v.decode("latin-1")
+            for k, v in scope.get("headers", [])
+        }
 
         route, path_params = self.router.match(method, path, protocol="http")
         if not route:
+            if method == "OPTIONS" and headers.get("access-control-request-method"):
+                request = Request(
+                    scope=scope,
+                    body={},
+                    params={},
+                    raw_body=b"",
+                    form={},
+                    files={},
+                )
+                request.app = self
+                request.route = None
+
+                async def execute(req):
+                    return "", 204
+
+                try:
+                    result = await self.middleware.run(request, execute)
+                except Exception as exc:
+                    await self._send_error(send, exc)
+                    return
+
+                response = self._normalize_response(result)
+                extra_headers = request.state.get("_response_headers", {})
+                for key, value in extra_headers.items():
+                    response.headers.setdefault(key, value)
+                await self._send(send, response)
+                return
             await self._send_error(send, HTTPException(404, "Not Found"))
             return
 
@@ -198,11 +229,6 @@ class App:
                     return
                 if not msg.get("more_body", False):
                     break
-
-        headers = {
-            k.decode("latin-1"): v.decode("latin-1")
-            for k, v in scope.get("headers", [])
-        }
 
         try:
             data, form_data, files = parse_http_body(headers, body_bytes)
