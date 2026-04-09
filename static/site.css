@@ -1,0 +1,15 @@
+body {
+  margin: 0;
+  font-family: Georgia, serif;
+  background: linear-gradient(135deg, #f6f0e8, #dbe7f1);
+  color: #1d2a33;
+}
+
+.shell {
+  max-width: 720px;
+  margin: 6rem auto;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(29, 42, 51, 0.12);
+  box-shadow: 0 20px 60px rgba(29, 42, 51, 0.12);
+}

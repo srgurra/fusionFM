@@ -1,5 +1,6 @@
 import re
 
+
 class Router:
     def __init__(self):
         self.routes = []
@@ -13,24 +14,39 @@ class Router:
 
         for part in parts:
             if part.startswith("{") and part.endswith("}"):
-                name = part[1:-1]
-                pattern += f"/(?P<{name}>[^/]+)"
+                raw = part[1:-1]
+                if ":" in raw:
+                    name, converter = raw.split(":", 1)
+                else:
+                    name, converter = raw, "str"
+
+                if converter == "path":
+                    pattern += f"/(?P<{name}>.+)"
+                else:
+                    pattern += f"/(?P<{name}>[^/]+)"
             else:
                 pattern += f"/{part}"
 
         return re.compile(f"^{pattern}/?$")
 
-    def add_route(self, method, path, handler, model=None):
-        method = method.upper()
+    def add_route(self, method, path, handler, model=None, protocol="http"):
+        method = method.upper() if method else None
+        protocol = protocol.lower()
 
         for route in self.routes:
-            if route["method"] == method and route["raw_path"] == path:
-                raise ValueError(f"Route already exists: {method} {path}")
+            if (
+                route["protocol"] == protocol
+                and route["method"] == method
+                and route["raw_path"] == path
+            ):
+                route_name = method or protocol.upper()
+                raise ValueError(f"Route already exists: {route_name} {path}")
 
         compiled = self._compile_path(path)
 
         self.routes.append(
             {
+                "protocol": protocol,
                 "method": method,
                 "raw_path": path,
                 "pattern": compiled,
@@ -39,10 +55,14 @@ class Router:
             }
         )
 
-    def match(self, method, path):
-        method = method.upper()
+    def match(self, method, path, protocol="http"):
+        method = method.upper() if method else None
+        protocol = protocol.lower()
 
         for route in self.routes:
+            if route["protocol"] != protocol:
+                continue
+
             if route["method"] != method:
                 continue
 

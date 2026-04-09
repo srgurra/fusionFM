@@ -27,6 +27,18 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
+def create_migration_table():
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version TEXT PRIMARY KEY,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+            )
+            """
+        )
+
+
 @contextmanager
 def get_db_session():
     session = SessionLocal()
