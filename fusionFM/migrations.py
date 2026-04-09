@@ -4,7 +4,7 @@ import importlib
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import inspect, text
@@ -91,7 +91,7 @@ def generate_migration(message: str, path: str = MIGRATIONS_DIR) -> Path | None:
     if not statements:
         return None
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     slug = _slugify(message or "migration")
     filename = f"{timestamp}_{slug}.sql"
     migration_path = migrations_path / filename

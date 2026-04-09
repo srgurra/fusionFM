@@ -5,7 +5,7 @@ description = "A modern async Python web framework combining ideas from FastAPI,
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
-    { name = "Your Name", email = "you@example.com" }
+    { name = "Sri Lakshmi Gurram", email = "srilakshmigurram0508@gmail.com" }
 ]
 license = { text = "MIT" }
 keywords = ["framework", "web", "asgi", "fastapi", "flask", "django"]
