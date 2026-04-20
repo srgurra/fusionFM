@@ -59,6 +59,9 @@ def cors_middleware(
     expose_headers = list(expose_headers or [])
 
     async def middleware(request, call_next):
+        if not hasattr(request, "method"):
+            return await call_next()
+
         origin = request.get_header("origin")
         allowed_origin = _resolve_allowed_origin(origin, allow_origins)
 

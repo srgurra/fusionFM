@@ -10,6 +10,7 @@
 - [Architecture](docs/architecture.md)
 - [Auth And Accounts](docs/auth-accounts.md)
 - [React And TypeScript](docs/react-typescript.md)
+- [External Acceptance Testing](docs/external-acceptance-testing.md)
 - [Operations](docs/operations.md)
 - [Deployment](docs/deployment.md)
 - [Testing](docs/testing.md)

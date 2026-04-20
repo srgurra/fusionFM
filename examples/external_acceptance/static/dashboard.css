@@ -1,0 +1,28 @@
+body {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  background: #f4efe7;
+  color: #1f2933;
+}
+
+.shell {
+  max-width: 760px;
+  margin: 12vh auto;
+  padding: 48px;
+  background: #fffaf2;
+  border: 1px solid #d9cbb8;
+  border-radius: 28px;
+  box-shadow: 0 24px 80px rgba(76, 55, 33, 0.15);
+}
+
+.eyebrow {
+  color: #9a5b20;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+a {
+  color: #0f766e;
+  font-weight: 700;
+}

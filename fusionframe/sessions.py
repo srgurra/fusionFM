@@ -260,6 +260,9 @@ def csrf_middleware(
     exempt_paths = set(exempt_paths or [])
 
     async def middleware(request, call_next):
+        if not hasattr(request, "method"):
+            return await call_next()
+
         get_csrf_token(request)
         if request.method.upper() not in exempt_methods and request.path not in exempt_paths:
             if not validate_csrf(request):

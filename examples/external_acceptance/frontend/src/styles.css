@@ -1,0 +1,27 @@
+body {
+  margin: 0;
+  font-family: Avenir, "Trebuchet MS", sans-serif;
+  background: linear-gradient(135deg, #0f172a, #164e63);
+  color: #ecfeff;
+}
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 72px 24px;
+}
+
+.eyebrow {
+  color: #67e8f9;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+section {
+  margin-top: 32px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.08);
+}
