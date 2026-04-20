@@ -73,6 +73,6 @@ from .jobs import (
 from .services import ServiceClient
 from .stability import API_COMPAT_VERSION, DEPRECATION_POLICY, PUBLIC_API
 
-__version__ = "0.1.0"
+__version__ = "0.1.0a1"
 
 __all__ = list(PUBLIC_API)

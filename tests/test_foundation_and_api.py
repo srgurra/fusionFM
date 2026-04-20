@@ -21,7 +21,7 @@ from fusionframe.stability import STABLE_MODULES, is_public_symbol
 
 
 def test_public_api_exports_are_stable():
-    assert __version__ == "0.1.0"
+    assert __version__ == "0.1.0a1"
     assert API_COMPAT_VERSION == "1"
     assert AppSettings.__name__ == "AppSettings"
     assert Plugin.__name__ == "Plugin"
