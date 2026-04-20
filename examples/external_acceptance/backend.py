@@ -135,7 +135,7 @@ def create_app(external_apis=None, accounts=None):
 
     templates = TemplateEngine(str(ROOT / "templates"))
     mount_static(app, str(ROOT / "static"), url_path="/assets")
-    mount_spa(app, str(ROOT / "frontend" / "dist"), mount_path="/client")
+    mount_spa(app, str(ROOT / "frontend_build"), mount_path="/client")
 
     api_v1 = app.api("1", prefix="/api")
     graphql = GraphQL()

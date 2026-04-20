@@ -36,6 +36,7 @@ The test suite replaces those network calls with a fake adapter so CI stays dete
 ## React Client
 
 The React client lives in [frontend](../examples/external_acceptance/frontend).
+The committed static build fixture used by backend tests lives in [frontend_build](../examples/external_acceptance/frontend_build).
 
 For manual development:
 
